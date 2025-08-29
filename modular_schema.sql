@@ -68,7 +68,7 @@ CREATE TABLE scraping_databases (
     port INTEGER DEFAULT 5432,
     database_name VARCHAR(100) NOT NULL,
     username VARCHAR(100) NOT NULL,
-    password ENCRYPTED TEXT NOT NULL,
+    password TEXT NOT NULL,
     ssl_mode VARCHAR(20) DEFAULT 'require',
     connection_pool_size INTEGER DEFAULT 5,
     max_connections INTEGER DEFAULT 20,
@@ -198,7 +198,7 @@ CREATE TABLE proxy_servers (
     
     -- Proxy details
     username VARCHAR(100),
-    password ENCRYPTED TEXT,
+    password TEXT,
     port INTEGER,
     
     -- Performance and reliability
