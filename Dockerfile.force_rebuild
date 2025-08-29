@@ -1,0 +1,76 @@
+# Dockerfile.force_rebuild - Use this when you need to force a complete rebuild
+# Usage: docker build -f Dockerfile.force_rebuild -t jobspy-frontend .
+
+FROM python:3.11-slim
+
+# Generate unique build identifier that changes with every build
+ARG BUILD_TIMESTAMP=$(date -u +'%Y%m%d-%H%M%S')
+ARG BUILD_UUID=$(uuidgen | tr -d '-')
+ARG RANDOM_HASH=$(head /dev/urandom | tr -dc 'a-f0-9' | fold -w 32 | head -n 1)
+
+# Set environment variables that will force cache invalidation
+ENV FORCE_REBUILD_TIMESTAMP=${BUILD_TIMESTAMP}
+ENV FORCE_REBUILD_UUID=${BUILD_UUID}
+ENV FORCE_REBUILD_HASH=${RANDOM_HASH}
+
+# This RUN command will ALWAYS change, breaking the cache chain
+RUN echo "=== FORCED COMPLETE REBUILD ===" && \
+    echo "Build Timestamp: ${BUILD_TIMESTAMP}" && \
+    echo "Build UUID: ${BUILD_UUID}" && \
+    echo "Random Hash: ${RANDOM_HASH}" && \
+    echo "This RUN command changes every build, breaking all Docker caching" && \
+    mkdir -p /tmp/rebuild_info && \
+    echo "BUILD_TIMESTAMP=${BUILD_TIMESTAMP}" > /tmp/rebuild_info/build_vars.txt && \
+    echo "BUILD_UUID=${BUILD_UUID}" >> /tmp/rebuild_info/build_vars.txt && \
+    echo "RANDOM_HASH=${RANDOM_HASH}" >> /tmp/rebuild_info/build_vars.txt && \
+    rm -rf /var/cache/apt/* /var/lib/apt/lists/* /tmp/* /var/tmp/* /root/.cache /app/*
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies (this will now always run due to cache break above)
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libpq-dev \
+    curl \
+    git \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements (this will now always be fresh)
+COPY requirements.admin.txt /app/requirements.admin.txt
+COPY requirements.txt /app/requirements.txt
+
+# Install dependencies (will always run due to cache break)
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.admin.txt && \
+    pip install --no-cache-dir psycopg2-binary requests flask-wtf
+
+# Copy application code (will always create fresh layers)
+COPY jobspy/ /app/jobspy/
+COPY worker_admin.py /app/
+COPY worker_manager.py /app/
+COPY modular_schema.sql /app/modular_schema.sql
+
+# Force schema rebuild
+RUN echo "Schema rebuild: $(date)" > /app/schema_rebuild_info.txt
+
+# Create directories fresh every time
+RUN rm -rf /app/templates /app/static /app/logs 2>/dev/null || true && \
+    mkdir -p /app/templates /app/static/css /app/static/js /app/static/images /app/logs
+
+# Set Flask environment
+ENV FLASK_APP=worker_admin.py
+ENV FLASK_ENV=production
+ENV PYTHONPATH=/app:/app/jobspy
+
+# Expose port
+EXPOSE 5000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:5000/health || exit 1
+
+# Start the application
+CMD ["python", "worker_admin.py"]

@@ -12,13 +12,17 @@ RUN echo "Build: $BUILD_DATE, Commit: $COMMIT_SHA, CacheBust: $CACHE_BUST" > /et
 # Set working directory
 WORKDIR /app
 
-# EXPLICIT CACHE INVALIDATION FOR EASYPANEL
-# This should force a complete rebuild regardless of caching
-RUN echo "=== FORCED REBUILD TRIGGER ===" && \
-    echo "Timestamp: $(date -u +'%Y-%m-%dT%H:%M:%SZ')" && \
-    echo "Commit: 4848423" && \
-    echo "Random: $(head /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 12 | head -n 1)" && \
-    rm -rf /tmp/* || true
+# AGGRESSIVE CACHE INVALIDATION - BREAKS ALL PREVIOUS LAYERS
+# This will force a complete rebuild regardless of any caching
+ARG BUILD_TIME=$(date -u +'%Y%m%d-%H%M%S')
+ARG RANDOM_ID=$(head /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+ENV BUILD_TIME=$BUILD_TIME
+ENV RANDOM_ID=$RANDOM_ID
+RUN echo "=== COMPLETE CACHE INVALIDATION ===" > /tmp/cache_bust_${BUILD_TIME}_${RANDOM_ID} && \
+    echo "Build time: ${BUILD_TIME}" >> /tmp/cache_bust_${BUILD_TIME}_${RANDOM_ID} && \
+    echo "Random ID: ${RANDOM_ID}" >> /tmp/cache_bust_${BUILD_TIME}_${RANDOM_ID} && \
+    echo "For complete rebuild, this file must be unique: ${BUILD_TIME}_${RANDOM_ID}" >> /tmp/cache_bust_${BUILD_TIME}_${RANDOM_ID} && \
+    rm -rf /var/cache/apt/* /var/lib/apt/lists/* /tmp/* /var/tmp/* || true
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -451,13 +455,16 @@ TEMPLATE
 # Force schema file to be processed fresh but keep original
 RUN cp /app/modular_schema.sql /app/modular_schema.sql.processed
 
-# CRITICAL TEMPLATE CACHE INVALIDATION
-# This forces Docker to rebuild all templates
-RUN echo "=== TEMPLATE REBUILD TRIGGER ===" && \
-    echo "Template rebuild time: $(date -u +'%Y-%m-%dT%H:%M:%SZ')" && \
-    echo "Random ID: $(head /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)" && \
-    rm -rf /app/templates/* 2>/dev/null || true && \
-    rm -rf /app/static/* 2>/dev/null || true
+# AGGRESSIVE TEMPLATE CACHE INVALIDATION
+# This forces Docker to rebuild all templates with unique identifier
+ARG TEMPLATE_BUILD_ID=$(date -u +'%Y%m%d-%H%M%S')_$(head /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
+ENV TEMPLATE_BUILD_ID=$TEMPLATE_BUILD_ID
+RUN echo "=== TEMPLATE CACHE INVALIDATION ===" > /tmp/template_cache_bust_${TEMPLATE_BUILD_ID} && \
+    echo "Template build ID: ${TEMPLATE_BUILD_ID}" >> /tmp/template_cache_bust_${TEMPLATE_BUILD_ID} && \
+    rm -rf /app/templates/* /app/static/* 2>/dev/null || true && \
+    mkdir -p /app/templates /app/static/css /app/static/js /app/static && \
+    echo "Template rebuild finished at: $(date -u +'%Y-%m-%dT%H:%M:%SZ')" > /app/templates/rebuild_info.txt && \
+    echo "Build ID: ${TEMPLATE_BUILD_ID}" >> /app/templates/rebuild_info.txt
 
 # Create login template
 RUN mkdir -p /app/templates

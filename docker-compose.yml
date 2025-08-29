@@ -5,7 +5,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile.frontend
+      dockerfile: Dockerfile.force_rebuild
     container_name: my-job-scraper-fe
     restart: unless-stopped
     environment:
