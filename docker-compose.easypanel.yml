@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # Frontend/Admin Interface
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: my-job-scraper-fe
+    restart: unless-stopped
+    environment:
+      POSTGRES_URL: ${POSTGRES_URL}
+      REDIS_URL: ${REDIS_URL}
+      SECRET_KEY: ${SECRET_KEY}
+      FLASK_APP: worker_admin.py
+      PYTHONPATH: /app:/app/jobspy
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./logs:/app/logs
+      - ./templates:/app/templates
+      - ./static:/app/static
+    networks:
+      - job-scraper-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Worker Service
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: my-job-scraper-worker
+    restart: unless-stopped
+    environment:
+      POSTGRES_URL: ${POSTGRES_URL}
+      REDIS_URL: ${REDIS_URL}
+      WORKER_ENGINE: primary
+      PYTHONPATH: /app:/app/jobspy
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - job-scraper-network
+    depends_on:
+      - frontend
+
+  # Additional Worker for Scalability
+  worker-secondary:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: my-job-scraper-worker-secondary
+    restart: unless-stopped
+    environment:
+      POSTGRES_URL: ${POSTGRES_URL}
+      REDIS_URL: ${REDIS_URL}
+      WORKER_ENGINE: secondary
+      PYTHONPATH: /app:/app/jobspy
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - job-scraper-network
+    depends_on:
+      - frontend
+
+networks:
+  job-scraper-network:
+    driver: bridge

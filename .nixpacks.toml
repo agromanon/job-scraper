@@ -1,0 +1,39 @@
+# EasyPanel Nixpacks Configuration
+# This tells Nixpacks how to build your Python application
+
+[build]
+# Python runtime version
+runtime = "python:3.11-slim"
+
+[phases.build]
+# Dependencies to install during build
+deps = ["build-essential", "libpq-dev", "curl", "git"]
+apt-packages = ["gcc", "g++", "libpq-dev"]
+pip-packages = ["psycopg2-binary", "redis", "requests", "python-dotenv", "bcrypt", "loguru", "schedule", "beautifulsoup4", "lxml", "markdownify", "pandas", "numpy"]
+
+[phases.setup]
+# Commands to run during setup
+commands = [
+  "pip install git+https://github.com/cullenwatson/JobSpy.git@master",
+  "mkdir -p /app/logs /app/templates /app/static/css /app/static/js"
+]
+
+[phases.start]
+# Command to start the application
+command = "python worker_admin.py"
+
+[env]
+# Environment variables
+PYTHONUNBUFFERED = "1"
+PYTHONDONTWRITEBYTECODE = "1"
+PYTHONPATH = "/app:/app/jobspy"
+FLASK_APP = "worker_admin.py"
+FLASK_ENV = "production"
+DEBUG = "false"
+
+[health]
+# Health check configuration
+path = "/health"
+interval = "30s"
+timeout = "10s"
+retries = "3"

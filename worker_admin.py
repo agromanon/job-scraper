@@ -1,0 +1,856 @@
+#!/usr/bin/env python3
+"""
+Flask Admin Interface for Worker Configuration and Management
+Provides web interface for configuring, monitoring, and controlling scraping workers
+"""
+
+import json
+import uuid
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Any
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+from flask_wtf import FlaskForm
+from wtforms import (
+    StringField, TextAreaField, IntegerField, BooleanField, 
+    SelectField, MultipleIntegerField, SelectMultipleField,
+    FloatField, SubmitField, FieldList, FormField
+)
+from wtforms.validators import DataRequired, Length, NumberRange, Optional
+import psycopg2
+from psycopg2 import sql, extras
+from psycopg2.pool import ThreadedConnectionPool
+import secrets
+import bcrypt
+
+app = Flask(__name__)
+app.secret_key = secrets.token_hex(32)
+
+# Database connection
+DATABASE_URL = "postgresql://postgres:password@localhost:5432/job_scraping"
+db_pool = ThreadedConnectionPool(1, 10, DATABASE_URL)
+
+
+# Forms
+class WorkerForm(FlaskForm):
+    """Form for creating/updating workers"""
+    name = StringField('Name', validators=[DataRequired(), Length(max=100)])
+    description = TextAreaField('Description', validators=[Optional(), Length(max=500)])
+    site = SelectField('Job Site', choices=[
+        ('linkedin', 'LinkedIn'),
+        ('indeed', 'Indeed'),
+        ('glassdoor', 'Glassdoor'),
+        ('google', 'Google Jobs'),
+        ('zip_recruiter', 'Zip Recruiter'),
+        ('bayt', 'Bayt'),
+        ('naukri', 'Naukri'),
+        ('bdjobs', 'BDJobs')
+    ], validators=[DataRequired()])
+    
+    search_term = StringField('Search Term', validators=[Optional(), Length(max=255)])
+    location = StringField('Location', validators=[Optional(), Length(max=255)])
+    country = StringField('Country', default='BRAZIL', validators=[Optional(), Length(max=50)])
+    distance = IntegerField('Search Radius (miles)', default=25, validators=[NumberRange(min=1, max=500)])
+    
+    job_type = SelectMultipleField('Job Types', choices=[
+        ('FULL_TIME', 'Full Time'),
+        ('PART_TIME', 'Part Time'),
+        ('CONTRACT', 'Contract'),
+        ('INTERNSHIP', 'Internship'),
+        ('TEMPORARY', 'Temporary'),
+        ('PER_DIEM', 'Per Diem'),
+        ('NIGHTS', 'Night Shift'),
+        ('OTHER', 'Other'),
+        ('SUMMER', 'Summer'),
+        ('VOLUNTEER', 'Volunteer')
+    ], validators=[Optional()])
+    
+    is_remote = BooleanField('Remote Jobs Only', default=False)
+    easy_apply = BooleanField('Easy Apply Only', default=False)
+    linkedin_company_ids = StringField('LinkedIn Company IDs (comma-separated)', validators=[Optional()])
+    
+    hours_old = IntegerField('Jobs Posted Within Last (hours)', validators=[Optional(), NumberRange(min=1)])
+    results_per_run = IntegerField('Results Per Run', default=50, validators=[NumberRange(min=1, max=1000)])
+    
+    schedule_hours = IntegerField('Run Every (hours)', default=24, validators=[NumberRange(min=1, max=168)])
+    schedule_minute_offset = IntegerField('Minute Offset', default=0, validators=[NumberRange(min=0, max=59)])
+    timezone = SelectField('Timezone', choices=[
+        ('America/Sao_Paulo', 'São Paulo (Brazil)'),
+        ('America/New_York', 'New York (US)'),
+        ('America/Los_Angeles', 'Los Angeles (US)'),
+        ('Europe/London', 'London (UK)'),
+        ('Europe/Paris', 'Paris (France)'),
+        ('Asia/Tokyo', 'Tokyo (Japan)'),
+        ('Asia/Dubai', 'Dubai (UAE)')
+    ], default='America/Sao_Paulo', validators=[DataRequired()])
+    
+    proxy_rotation_policy = SelectField('Proxy Rotation', choices=[
+        ('rotating', 'Rotating'),
+        ('sticky', 'Sticky'),
+        ('none', 'None')
+    ], default='rotating', validators=[DataRequired()])
+    
+    proxies = TextAreaField('Proxy URLs (one per line)', validators=[Optional()])
+    max_retries = IntegerField('Max Retries', default=3, validators=[NumberRange(min=0, max=10)])
+    timeout = IntegerField('Timeout (seconds)', default=30, validators=[NumberRange(min=10, max=300)])
+    rate_limit_requests = IntegerField('Rate Limit (requests)', default=10, validators=[NumberRange(min=1, max=100)])
+    rate_limit_seconds = IntegerField('Rate Limit Interval (seconds)', default=60, validators=[NumberRange(min=1, max=3600)])
+    
+    description_format = SelectField('Description Format', choices=[
+        ('markdown', 'Markdown'),
+        ('html', 'HTML'),
+        ('plain', 'Plain Text')
+    ], default='markdown', validators=[DataRequired()])
+    
+    linkedin_fetch_description = BooleanField('Fetch LinkedIn Description', default=False)
+    
+    # Database configuration
+    database_id = SelectField('Database', coerce=int, validators=[DataRequired()])
+    table_name = StringField('Table Name', validators=[DataRequired(), Length(max=100)])
+    
+    # Resource limits
+    memory_limit_mb = IntegerField('Memory Limit (MB)', default=512, validators=[NumberRange(min=64, max=4096)])
+    cpu_limit_cores = FloatField('CPU Limit (cores)', default=0.5, validators=[NumberRange(min=0.1, max=4.0)])
+    max_runtime_minutes = IntegerField('Max Runtime (minutes)', default=60, validators=[NumberRange(min=5, max=360)])
+    
+    # Error handling
+    max_consecutive_errors = IntegerField('Max Consecutive Errors', default=5, validators=[NumberRange(min=1, max=20)])
+    auto_pause_on_errors = BooleanField('Auto-Pause on Errors', default=True)
+    
+    tags = StringField('Tags (comma-separated)', validators=[Optional()])
+    
+    submit = SubmitField('Save Worker')
+
+
+class DatabaseForm(FlaskForm):
+    """Form for creating/updating databases"""
+    name = StringField('Name', validators=[DataRequired(), Length(max=100)])
+    description = TextAreaField('Description', validators=[Optional(), Length(max=500)])
+    host = StringField('Host', validators=[DataRequired(), Length(max=255)])
+    port = IntegerField('Port', default=5432, validators=[NumberRange(min=1, max=65535)])
+    database_name = StringField('Database Name', validators=[DataRequired(), Length(max=100)])
+    username = StringField('Username', validators=[DataRequired(), Length(max=100)])
+    password = StringField('Password', validators=[DataRequired(), Length(max=255)])
+    ssl_mode = SelectField('SSL Mode', choices=[
+        ('require', 'Require'),
+        ('prefer', 'Prefer'),
+        ('allow', 'Allow'),
+        ('disable', 'Disable'),
+        ('verify-full', 'Verify Full')
+    ], default='require', validators=[DataRequired()])
+    
+    connection_pool_size = IntegerField('Connection Pool Size', default=5, validators=[NumberRange(min=1, max=50)])
+    max_connections = IntegerField('Max Connections', default=20, validators=[NumberRange(min=1, max=100)])
+    connection_timeout_seconds = IntegerField('Connection Timeout (seconds)', default=30, validators=[NumberRange(min=5, max=300)])
+    
+    target_table_prefix = StringField('Table Prefix', default='job_listings_', validators=[Optional(), Length(max=50)])
+    create_schema_if_not_exists = BooleanField('Create Schema if Not Exists', default=True)
+    
+    batch_size = IntegerField('Batch Size', default=100, validators=[NumberRange(min=10, max=10000)])
+    deduplication_method = SelectField('Deduplication Method', choices=[
+        ('unique_id', 'Unique ID'),
+        ('composite_key', 'Composite Key'),
+        ('none', 'None')
+    ], default='unique_id', validators=[DataRequired()])
+    
+    deduplication_fields = TextAreaField('Deduplication Fields (one per line)', validators=[Optional()])
+    
+    tags = StringField('Tags (comma-separated)', validators=[Optional()])
+    
+    submit = SubmitField('Save Database')
+
+
+class ProxyForm(FlaskForm):
+    """Form for creating/updating proxies"""
+    url = StringField('Proxy URL', validators=[DataRequired(), Length(max=255)])
+    description = TextAreaField('Description', validators=[Optional(), Length(max=500)])
+    country = StringField('Country', validators=[Optional(), Length(max=50)])
+    city = StringField('City', validators=[Optional(), Length(max=50)])
+    provider = StringField('Provider', validators=[Optional(), Length(max=100)])
+    protocol = SelectField('Protocol', choices=[
+        ('http', 'HTTP'),
+        ('https', 'HTTPS'),
+        ('socks5', 'SOCKS5')
+    ], default='http', validators=[DataRequired()])
+    
+    username = StringField('Username', validators=[Optional(), Length(max=100)])
+    password = StringField('Password', validators=[Optional(), Length(max=255)])
+    port = IntegerField('Port', validators=[Optional(), NumberRange(min=1, max=65535)])
+    
+    max_requests_per_hour = IntegerField('Max Requests/Hour', default=1000, validators=[NumberRange(min=1, max=10000)])
+    cost_per_request = FloatField('Cost per Request', validators=[Optional(), NumberRange(min=0)])
+    monthly_cost_limit = FloatField('Monthly Cost Limit', validators=[Optional(), NumberRange(min=0)])
+    is_premium = BooleanField('Premium Proxy', default=False)
+    
+    tags = StringField('Tags (comma-separated)', validators=[Optional()])
+    
+    submit = SubmitField('Save Proxy')
+
+
+class LoginForm(FlaskForm):
+    """Simple login form"""
+    password = StringField('Password', validators=[DataRequired()])
+    submit = SubmitField('Login')
+
+
+# Database helper functions
+def get_db_connection():
+    """Get database connection from pool"""
+    return db_pool.getconn()
+
+
+def release_db_connection(conn):
+    """Release database connection back to pool"""
+    db_pool.putconn(conn)
+
+
+def execute_query(query: str, params: tuple = (), fetch: bool = True, commit: bool = False):
+    """Execute database query with error handling"""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=extras.DictCursor)
+        
+        cursor.execute(query, params)
+        
+        if fetch:
+            result = cursor.fetchall()
+        else:
+            result = cursor.rowcount
+        
+        if commit:
+            conn.commit()
+        
+        cursor.close()
+        return result
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        app.logger.error(f"Database error: {e}")
+        raise
+    finally:
+        if conn:
+            release_db_connection(conn)
+
+
+# Routes
+@app.route('/')
+def dashboard():
+    """Main dashboard with worker overview"""
+    try:
+        # Get worker statistics
+        stats = execute_query("""
+            SELECT 
+                COUNT(*) as total_workers,
+                COUNT(CASE WHEN status = 'active' THEN 1 END) as active_workers,
+                COUNT(CASE WHEN status = 'paused' THEN 1 END) as paused_workers,
+                COUNT(CASE WHEN status = 'error' THEN 1 END) as error_workers,
+                COUNT(CASE WHEN last_run >= CURRENT_DATE THEN 1 END) as workers_today,
+                COUNT(CASE WHEN next_run <= CURRENT_TIMESTAMP + INTERVAL '1 hour' THEN 1 END) as scheduled_soon
+            FROM scraping_workers
+        """, fetch=True)[0] or {}
+        
+        # Get recent executions
+        recent_executions = execute_query("""
+            SELECT 
+                eh.*,
+                w.name as worker_name,
+                d.name as database_name
+            FROM worker_execution_history eh
+            LEFT JOIN scraping_workers w ON eh.worker_id = w.id
+            LEFT JOIN scraping_databases d ON eh.database_id = d.id
+            ORDER BY eh.execution_start DESC
+            LIMIT 10
+        """, fetch=True)
+        
+        # Get next scheduled runs
+        scheduled_runs = execute_query("""
+            SELECT 
+                w.id, w.name, w.site, w.next_run, w.database_id,
+                d.name as database_name
+            FROM scraping_workers w
+            LEFT JOIN scraping_databases d ON w.database_id = d.id
+            WHERE w.status = 'active' AND w.next_run IS NOT NULL
+            ORDER BY w.next_run
+            LIMIT 5
+        """, fetch=True)
+        
+        return render_template('dashboard.html', 
+                             stats=stats,
+                             recent_executions=recent_executions,
+                             scheduled_runs=scheduled_runs)
+    
+    except Exception as e:
+        app.logger.error(f"Dashboard error: {e}")
+        return render_template('error.html', error=str(e))
+
+
+@app.route('/workers')
+def list_workers():
+    """List all workers"""
+    try:
+        workers = execute_query("""
+            SELECT 
+                w.*,
+                d.name as database_name
+            FROM scraping_workers w
+            LEFT JOIN scraping_databases d ON w.database_id = d.id
+            ORDER BY w.name
+        """, fetch=True)
+        
+        return render_template('workers.html', workers=workers)
+    
+    except Exception as e:
+        app.logger.error(f"Workers list error: {e}")
+        return render_template('error.html', error=str(e))
+
+
+@app.route('/workers/new', methods=['GET', 'POST'])
+def new_worker():
+    """Create new worker"""
+    form = WorkerForm()
+    
+    # Populate database choices
+    databases = execute_query("SELECT id, name FROM scraping_databases WHERE is_active = true ORDER BY name")
+    form.database_id.choices = [(db['id'], db['name']) for db in databases]
+    
+    if form.validate_on_submit():
+        try:
+            # Parse linkedin_company_ids
+            linkedin_company_ids = []
+            if form.linkedin_company_ids.data:
+                try:
+                    linkedin_company_ids = [int(x.strip()) for x in form.linkedin_company_ids.data.split(',')]
+                except ValueError:
+                    flash('Invalid LinkedIn Company IDs format', 'error')
+                    return render_template('worker_form.html', form=form, action='new')
+            
+            # Parse proxies
+            proxies = []
+            if form.proxies.data:
+                proxies = [line.strip() for line in form.proxies.data.split('\n') if line.strip()]
+            
+            # Parse tags
+            tags = []
+            if form.tags.data:
+                tags = [tag.strip() for tag in form.tags.data.split(',')]
+            
+            # Calculate initial next_run time
+            schedule_minute_offset = form.schedule_minute_offset.data or 0
+            timezone = form.timezone.data
+            
+            # Insert worker
+            execute_query("""
+                INSERT INTO scraping_workers (
+                    name, description, site, search_term, location, country, distance, job_type,
+                    is_remote, easy_apply, linkedin_company_ids, hours_old, results_per_run,
+                    schedule_hours, schedule_minute_offset, timezone, proxy_rotation_policy, proxies,
+                    max_retries, timeout, rate_limit_requests, rate_limit_seconds, description_format,
+                    linkedin_fetch_description, database_id, table_name, memory_limit_mb,
+                    cpu_limit_cores, max_runtime_minutes, max_consecutive_errors, auto_pause_on_errors, tags,
+                    next_run
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                form.name.data,
+                form.description.data,
+                form.site.data,
+                form.search_term.data,
+                form.location.data,
+                form.country.data,
+                form.distance.data,
+                json.dumps(form.job_type.data) if form.job_type.data else None,
+                form.is_remote.data,
+                form.easy_apply.data,
+                linkedin_company_ids,
+                form.hours_old.data,
+                form.results_per_run.data,
+                form.schedule_hours.data,
+                schedule_minute_offset,
+                timezone,
+                form.proxy_rotation_policy.data,
+                proxies,
+                form.max_retries.data,
+                form.timeout.data,
+                form.rate_limit_requests.data,
+                form.rate_limit_seconds.data,
+                form.description_format.data,
+                form.linkedin_fetch_description.data,
+                form.database_id.data,
+                form.table_name.data,
+                form.memory_limit_mb.data,
+                form.cpu_limit_cores.data,
+                form.max_runtime_minutes.data,
+                form.max_consecutive_errors.data,
+                form.auto_pause_on_errors.data,
+                tags,
+                datetime.utcnow() + timedelta(minutes=schedule_minute_offset)  # Initial next_run
+            ), fetch=False, commit=True)
+            
+            flash('Worker created successfully!', 'success')
+            return redirect(url_for('list_workers'))
+            
+        except Exception as e:
+            app.logger.error(f"Worker creation error: {e}")
+            flash(f'Error creating worker: {str(e)}', 'error')
+    
+    return render_template('worker_form.html', form=form, action='new')
+
+
+@app.route('/workers/<int:worker_id>/edit', methods=['GET', 'POST'])
+def edit_worker(worker_id):
+    """Edit existing worker"""
+    try:
+        # Get worker data
+        worker_data = execute_query("SELECT * FROM scraping_workers WHERE id = %s", (worker_id,), fetch=True)
+        if not worker_data:
+            flash('Worker not found', 'error')
+            return redirect(url_for('list_workers'))
+        
+        worker = worker_data[0]
+        form = WorkerForm(obj=worker)
+        
+        # Populate database choices
+        databases = execute_query("SELECT id, name FROM scraping_databases WHERE is_active = true ORDER BY name")
+        form.database_id.choices = [(db['id'], db['name']) for db in databases]
+        
+        # Set form data for complex fields
+        form.linkedin_company_ids.data = ','.join(map(str, worker['linkedin_company_ids'] or []))
+        form.proxies.data = '\n'.join(worker['proxies'] or [])
+        form.tags.data = ','.join(worker['tags'] or [])
+        
+        if form.validate_on_submit():
+            try:
+                # Parse linkedin_company_ids
+                linkedin_company_ids = []
+                if form.linkedin_company_ids.data:
+                    try:
+                        linkedin_company_ids = [int(x.strip()) for x in form.linkedin_company_ids.data.split(',')]
+                    except ValueError:
+                        flash('Invalid LinkedIn Company IDs format', 'error')
+                        return render_template('worker_form.html', form=form, action='edit', worker_id=worker_id)
+                
+                # Parse proxies
+                proxies = []
+                if form.proxies.data:
+                    proxies = [line.strip() for line in form.proxies.data.split('\n') if line.strip()]
+                
+                # Parse tags
+                tags = []
+                if form.tags.data:
+                    tags = [tag.strip() for tag in form.tags.data.split(',')]
+                
+                # Update worker
+                execute_query("""
+                    UPDATE scraping_workers SET
+                        name = %s, description = %s, site = %s, search_term = %s, location = %s,
+                        country = %s, distance = %s, job_type = %s, is_remote = %s, easy_apply = %s,
+                        linkedin_company_ids = %s, hours_old = %s, results_per_run = %s, schedule_hours = %s,
+                        schedule_minute_offset = %s, timezone = %s, proxy_rotation_policy = %s, proxies = %s,
+                        max_retries = %s, timeout = %s, rate_limit_requests = %s, rate_limit_seconds = %s,
+                        description_format = %s, linkedin_fetch_description = %s, database_id = %s,
+                        table_name = %s, memory_limit_mb = %s, cpu_limit_cores = %s, max_runtime_minutes = %s,
+                        max_consecutive_errors = %s, auto_pause_on_errors = %s, tags = %s
+                    WHERE id = %s
+                """, (
+                    form.name.data,
+                    form.description.data,
+                    form.site.data,
+                    form.search_term.data,
+                    form.location.data,
+                    form.country.data,
+                    form.distance.data,
+                    json.dumps(form.job_type.data) if form.job_type.data else None,
+                    form.is_remote.data,
+                    form.easy_apply.data,
+                    linkedin_company_ids,
+                    form.hours_old.data,
+                    form.results_per_run.data,
+                    form.schedule_hours.data,
+                    form.schedule_minute_offset.data,
+                    form.timezone.data,
+                    form.proxy_rotation_policy.data,
+                    proxies,
+                    form.max_retries.data,
+                    form.timeout.data,
+                    form.rate_limit_requests.data,
+                    form.rate_limit_seconds.data,
+                    form.description_format.data,
+                    form.linkedin_fetch_description.data,
+                    form.database_id.data,
+                    form.table_name.data,
+                    form.memory_limit_mb.data,
+                    form.cpu_limit_cores.data,
+                    form.max_runtime_minutes.data,
+                    form.max_consecutive_errors.data,
+                    form.auto_pause_on_errors.data,
+                    tags,
+                    worker_id
+                ), fetch=False, commit=True)
+                
+                flash('Worker updated successfully!', 'success')
+                return redirect(url_for('list_workers'))
+                
+            except Exception as e:
+                app.logger.error(f"Worker update error: {e}")
+                flash(f'Error updating worker: {str(e)}', 'error')
+        
+        return render_template('worker_form.html', form=form, action='edit', worker_id=worker_id)
+    
+    except Exception as e:
+        app.logger.error(f"Worker edit error: {e}")
+        return render_template('error.html', error=str(e))
+
+
+@app.route('/workers/<int:worker_id>/toggle')
+def toggle_worker(worker_id):
+    """Toggle worker active/paused status"""
+    try:
+        worker_data = execute_query("SELECT status FROM scraping_workers WHERE id = %s", (worker_id,), fetch=True)
+        if not worker_data:
+            flash('Worker not found', 'error')
+            return redirect(url_for('list_workers'))
+        
+        current_status = worker_data[0]['status']
+        new_status = 'paused' if current_status == 'active' else 'active'
+        
+        execute_query("UPDATE scraping_workers SET status = %s WHERE id = %s", (new_status, worker_id), fetch=False, commit=True)
+        
+        flash(f'Worker {new_status} successfully!', 'success')
+        return redirect(url_for('list_workers'))
+    
+    except Exception as e:
+        app.logger.error(f"Worker toggle error: {e}")
+        flash(f'Error toggling worker: {str(e)}', 'error')
+        return redirect(url_for('list_workers'))
+
+
+@app.route('/workers/<int:worker_id>/delete')
+def delete_worker(worker_id):
+    """Delete worker"""
+    try:
+        execute_query("DELETE FROM scraping_workers WHERE id = %s", (worker_id,), fetch=False, commit=True)
+        flash('Worker deleted successfully!', 'success')
+        return redirect(url_for('list_workers'))
+    
+    except Exception as e:
+        app.logger.error(f"Worker deletion error: {e}")
+        flash(f'Error deleting worker: {str(e)}', 'error')
+        return redirect(url_for('list_workers'))
+
+
+@app.route('/workers/<int:worker_id>/execute')
+def execute_worker(worker_id):
+    """Manually execute worker"""
+    try:
+        # Import here to avoid circular imports
+        from worker_manager import WorkerManager
+        
+        # Get worker configuration
+        worker_data = execute_query("SELECT * FROM scraping_workers WHERE id = %s", (worker_id,), fetch=True)
+        if not worker_data:
+            flash('Worker not found', 'error')
+            return redirect(url_for('list_workers'))
+        
+        worker_record = worker_data[0]
+        
+        # Create WorkerConfig object
+        from worker_manager import WorkerConfig
+        config = WorkerConfig(
+            id=worker_record['id'],
+            name=worker_record['name'],
+            site=worker_record['site'],
+            search_term=worker_record['search_term'],
+            location=worker_record['location'],
+            country=worker_record['country'],
+            distance=worker_record['distance'],
+            job_type=worker_record['job_type'] or [],
+            is_remote=worker_record['is_remote'],
+            easy_apply=worker_record['easy_apply'],
+            linkedin_company_ids=worker_record['linkedin_company_ids'] or [],
+            hours_old=worker_record['hours_old'],
+            results_per_run=worker_record['results_per_run'],
+            schedule_hours=worker_record['schedule_hours'],
+            schedule_minute_offset=worker_record['schedule_minute_offset'],
+            timezone=worker_record['timezone'],
+            proxy_rotation_policy=worker_record['proxy_rotation_policy'],
+            proxies=worker_record['proxies'] or [],
+            max_retries=worker_record['max_retries'],
+            timeout=worker_record['timeout'],
+            rate_limit_requests=worker_record['rate_limit_requests'],
+            rate_limit_seconds=worker_record['rate_limit_seconds'],
+            description_format=worker_record['description_format'],
+            linkedin_fetch_description=worker_record['linkedin_fetch_description'],
+            database_id=worker_record['database_id'],
+            table_name=worker_record['table_name'],
+            status=worker_record['status'],
+            memory_limit_mb=worker_record['memory_limit_mb'],
+            cpu_limit_cores=worker_record['cpu_limit_cores'],
+            max_runtime_minutes=worker_record['max_runtime_minutes'],
+            tags=worker_record['tags'] or []
+        )
+        
+        # Execute worker in background thread
+        import threading
+        def run_worker():
+            try:
+                manager = WorkerManager(DATABASE_URL)
+                manager.register_databases()
+                manager.run_worker(config)
+            except Exception as e:
+                app.logger.error(f"Worker execution error: {e}")
+        
+        thread = threading.Thread(target=run_worker)
+        thread.daemon = True
+        thread.start()
+        
+        flash('Worker execution started!', 'success')
+        return redirect(url_for('list_workers'))
+        
+    except Exception as e:
+        app.logger.error(f"Worker execution error: {e}")
+        flash(f'Error executing worker: {str(e)}', 'error')
+        return redirect(url_for('list_workers'))
+
+
+# Database management routes
+@app.route('/databases')
+def list_databases():
+    """List all databases"""
+    try:
+        databases = execute_query("""
+            SELECT 
+                d.*,
+                COUNT(DISTINCT w.id) as worker_count
+            FROM scraping_databases d
+            LEFT JOIN scraping_workers w ON d.id = w.database_id AND w.status = 'active'
+            GROUP BY d.id
+            ORDER BY d.name
+        """, fetch=True)
+        
+        return render_template('databases.html', databases=databases)
+    
+    except Exception as e:
+        app.logger.error(f"Databases list error: {e}")
+        return render_template('error.html', error=str(e))
+
+
+@app.route('/databases/new', methods=['GET', 'POST'])
+def new_database():
+    """Create new database"""
+    form = DatabaseForm()
+    
+    if form.validate_on_submit():
+        try:
+            # Parse deduplication fields
+            deduplication_fields = []
+            if form.deduplication_fields.data:
+                deduplication_fields = [line.strip() for line in form.deduplication_fields.data.split('\n') if line.strip()]
+            
+            # Parse tags
+            tags = []
+            if form.tags.data:
+                tags = [tag.strip() for tag in form.tags.data.split(',')]
+            
+            # Insert database
+            execute_query("""
+                INSERT INTO scraping_databases (
+                    name, description, host, port, database_name, username, password, ssl_mode,
+                    connection_pool_size, max_connections, connection_timeout_seconds,
+                    target_table_prefix, create_schema_if_not_exists, batch_size,
+                    deduplication_method, deduplication_fields, tags
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                form.name.data,
+                form.description.data,
+                form.host.data,
+                form.port.data,
+                form.database_name.data,
+                form.username.data,
+                form.password.data,  # In production, encrypt this
+                form.ssl_mode.data,
+                form.connection_pool_size.data,
+                form.max_connections.data,
+                form.connection_timeout_seconds.data,
+                form.target_table_prefix.data,
+                form.create_schema_if_not_exists.data,
+                form.batch_size.data,
+                form.deduplication_method.data,
+                deduplication_fields,
+                tags
+            ), fetch=False, commit=True)
+            
+            flash('Database created successfully!', 'success')
+            return redirect(url_for('list_databases'))
+            
+        except Exception as e:
+            app.logger.error(f"Database creation error: {e}")
+            flash(f'Error creating database: {str(e)}', 'error')
+    
+    return render_template('database_form.html', form=form, action='new')
+
+
+# API routes for AJAX operations
+@app.route('/api/workers/<int:worker_id>/history')
+def worker_history(worker_id):
+    """Get worker execution history as JSON"""
+    try:
+        history = execute_query("""
+            SELECT *
+            FROM worker_execution_history
+            WHERE worker_id = %s
+            ORDER BY execution_start DESC
+            LIMIT 50
+        """, (worker_id,), fetch=True)
+        
+        return jsonify({
+            'success': True,
+            'data': [dict(record) for record in history]
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/workers/<int:worker_id>/performance')
+def worker_performance(worker_id):
+    """Get worker performance stats as JSON"""
+    try:
+        stats = execute_query("""
+            SELECT 
+                COUNT(*) as total_executions,
+                COUNT(CASE WHEN status = 'success' THEN 1 END) as successful_executions,
+                COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed_executions,
+                AVG(duration_seconds) as avg_duration_seconds,
+                AVG(jobs_inserted) as avg_jobs_per_run,
+                SUM(jobs_inserted) as total_jobs_inserted,
+                SUM(duplicates_found) as total_duplicates,
+                MAX(execution_start) as last_execution
+            FROM worker_execution_history
+            WHERE worker_id = %s
+        """, (worker_id,), fetch=True)
+        
+        if stats:
+            stats = dict(stats[0])
+            # Calculate success rate
+            if stats['total_executions'] > 0:
+                stats['success_rate'] = (stats['successful_executions'] * 100.0) / stats['total_executions']
+            else:
+                stats['success_rate'] = 0
+        
+        return jsonify({
+            'success': True,
+            'data': stats or {}
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/databases/<int:database_id>/test')
+def test_database(database_id):
+    """Test database connection"""
+    try:
+        db_data = execute_query("SELECT * FROM scraping_databases WHERE id = %s", (database_id,), fetch=True)
+        if not db_data:
+            return jsonify({'success': False, 'error': 'Database not found'})
+        
+        db_record = db_data[0]
+        
+        # Test connection
+        import psycopg2
+        test_conn = None
+        try:
+            test_conn = psycopg2.connect(
+                host=db_record['host'],
+                port=db_record['port'],
+                database=db_record['database_name'],
+                user=db_record['username'],
+                password=db_record['password'],
+                sslmode=db_record['ssl_mode'],
+                connect_timeout=10
+            )
+            
+            # Execute simple query
+            cursor = test_conn.cursor()
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+            
+            # Update database status
+            execute_query("""
+                UPDATE scraping_databases 
+                SET 
+                    connection_status = 'success',
+                    last_connection_test = CURRENT_TIMESTAMP,
+                    connection_error = NULL,
+                    is_active = true
+                WHERE id = %s
+            """, (database_id,), fetch=False, commit=True)
+            
+            return jsonify({'success': True, 'message': 'Database connection successful'})
+            
+        except Exception as conn_error:
+            # Update database status with error
+            execute_query("""
+                UPDATE scraping_databases 
+                SET 
+                    connection_status = 'failed',
+                    last_connection_test = CURRENT_TIMESTAMP,
+                    connection_error = %s
+                WHERE id = %s
+            """, (str(conn_error), database_id), fetch=False, commit=True)
+            
+            return jsonify({'success': False, 'error': str(conn_error)})
+        
+        finally:
+            if test_conn:
+                test_conn.close()
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+if __name__ == '__main__':
+    # Initialize database schema if not exists
+    try:
+        # Create tables using the schema file
+        with open('modular_schema.sql', 'r') as f:
+            schema_sql = f.read()
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Split schema into individual statements
+        statements = schema_sql.split(';')
+        
+        for statement in statements:
+            statement = statement.strip()
+            if statement.startswith('--') or not statement:
+                continue
+                
+            try:
+                cursor.execute(statement)
+                conn.commit()
+            except Exception as e:
+                if 'already exists' not in str(e).lower():
+                    conn.rollback()
+                    app.logger.error(f"Schema error: {e}")
+        
+        cursor.close()
+        release_db_connection(conn)
+        
+        app.logger.info("Database initialized successfully")
+    
+    except Exception as e:
+        app.logger.error(f"Database initialization error: {e}")
+    
+    # Run Flask app
+    app.run(host='0.0.0.0', port=5000, debug=True)
