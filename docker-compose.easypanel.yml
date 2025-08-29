@@ -12,6 +12,10 @@ services:
       POSTGRES_URL: ${POSTGRES_URL}
       REDIS_URL: ${REDIS_URL}
       SECRET_KEY: ${SECRET_KEY}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_KEY: ${SUPABASE_KEY}
+      SUPABASE_DATABASE_URL: ${SUPABASE_DATABASE_URL}
       FLASK_APP: worker_admin.py
       PYTHONPATH: /app:/app/jobspy
     ports:

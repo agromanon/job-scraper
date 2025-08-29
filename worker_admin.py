@@ -8,7 +8,8 @@ import json
 import uuid
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+from functools import wraps
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session, make_response
 from flask_wtf import FlaskForm
 from wtforms import (
     StringField, TextAreaField, IntegerField, BooleanField, 
@@ -256,8 +257,49 @@ def execute_query(query: str, params: tuple = (), fetch: bool = True, commit: bo
             release_db_connection(conn)
 
 
+# Authentication middleware
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'logged_in' not in session:
+            flash('Please log in to access the dashboard', 'warning')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+# Authentication routes
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Login route for admin dashboard"""
+    form = LoginForm()
+    
+    if form.validate_on_submit():
+        # Simple password authentication (in production, use proper hashing)
+        admin_password = os.getenv('ADMIN_PASSWORD', 'admin123')
+        
+        if form.password.data == admin_password:
+            session['logged_in'] = True
+            session['username'] = 'admin'
+            flash('Login successful!', 'success')
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Invalid password', 'error')
+    
+    return render_template('login.html', form=form)
+
+
+@app.route('/logout')
+def logout():
+    """Logout route"""
+    session.clear()
+    flash('You have been logged out', 'info')
+    return redirect(url_for('login'))
+
+
 # Routes
 @app.route('/')
+@login_required
 def dashboard():
     """Main dashboard with worker overview"""
     try:
@@ -309,6 +351,7 @@ def dashboard():
 
 
 @app.route('/workers')
+@login_required
 def list_workers():
     """List all workers"""
     try:
@@ -329,6 +372,7 @@ def list_workers():
 
 
 @app.route('/workers/new', methods=['GET', 'POST'])
+@login_required
 def new_worker():
     """Create new worker"""
     form = WorkerForm()
@@ -420,6 +464,7 @@ def new_worker():
 
 
 @app.route('/workers/<int:worker_id>/edit', methods=['GET', 'POST'])
+@login_required
 def edit_worker(worker_id):
     """Edit existing worker"""
     try:
@@ -525,6 +570,7 @@ def edit_worker(worker_id):
 
 
 @app.route('/workers/<int:worker_id>/toggle')
+@login_required
 def toggle_worker(worker_id):
     """Toggle worker active/paused status"""
     try:
@@ -548,6 +594,7 @@ def toggle_worker(worker_id):
 
 
 @app.route('/workers/<int:worker_id>/delete')
+@login_required
 def delete_worker(worker_id):
     """Delete worker"""
     try:
@@ -562,6 +609,7 @@ def delete_worker(worker_id):
 
 
 @app.route('/workers/<int:worker_id>/execute')
+@login_required
 def execute_worker(worker_id):
     """Manually execute worker"""
     try:
@@ -637,6 +685,7 @@ def execute_worker(worker_id):
 
 # Database management routes
 @app.route('/databases')
+@login_required
 def list_databases():
     """List all databases"""
     try:
@@ -658,6 +707,7 @@ def list_databases():
 
 
 @app.route('/databases/new', methods=['GET', 'POST'])
+@login_required
 def new_database():
     """Create new database"""
     form = DatabaseForm()
