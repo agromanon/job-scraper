@@ -27,7 +27,8 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', secrets.token_hex(32))
 
 # Database connection
-DATABASE_URL = os.getenv('POSTGRES_URL', "postgresql://postgres:password@localhost:5432/job_scraping")
+DATABASE_URL = os.getenv('POSTGRES_URL', "postgresql://aromanon:Afmg2486!@my-job-scraper_my-job-scraper:5432/job-data")
+print(f"DATABASE_URL: {DATABASE_URL}")  # Debug logging
 db_pool = ThreadedConnectionPool(1, 10, DATABASE_URL)
 
 
