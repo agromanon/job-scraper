@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from functools import wraps
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session, make_response
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session, make_response, g
 from flask_wtf import FlaskForm
 from wtforms import (
     StringField, TextAreaField, IntegerField, BooleanField, 
@@ -1109,11 +1109,34 @@ def initialize_database_schema():
         app.logger.error(f"Database initialization traceback: {traceback.format_exc()}")
 
 # Initialize database schema when Flask app starts
-@app.before_first_request
+# Note: before_first_request is deprecated in Flask 2.3+, using with_app_context instead
 def initialize_schema_on_first_request():
     """Initialize database schema on first request"""
     print("First request detected, initializing database schema...")
     initialize_database_schema()
+
+# Register a before_request handler to initialize schema on first request
+@app.before_request
+def ensure_schema_initialized():
+    """Ensure database schema is initialized before serving requests"""
+    if not hasattr(g, 'schema_initialized'):
+        try:
+            # Check if tables exist, if not initialize
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'scraping_workers')")
+            tables_exist = cursor.fetchone()[0]
+            cursor.close()
+            release_db_connection(conn)
+            
+            if not tables_exist:
+                print("Database tables not found, initializing schema...")
+                initialize_database_schema()
+            
+            g.schema_initialized = True
+        except Exception as e:
+            print(f"Error checking schema initialization: {e}")
+            g.schema_initialized = False
 
 # Also try to initialize on startup for development server
 try:
