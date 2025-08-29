@@ -12,10 +12,11 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, f
 from flask_wtf import FlaskForm
 from wtforms import (
     StringField, TextAreaField, IntegerField, BooleanField, 
-    SelectField, MultipleIntegerField, SelectMultipleField,
+    SelectField, SelectMultipleField,
     FloatField, SubmitField, FieldList, FormField
 )
 from wtforms.validators import DataRequired, Length, NumberRange, Optional
+import os
 import psycopg2
 from psycopg2 import sql, extras
 from psycopg2.pool import ThreadedConnectionPool
@@ -23,10 +24,10 @@ import secrets
 import bcrypt
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(32)
+app.secret_key = os.getenv('SECRET_KEY', secrets.token_hex(32))
 
 # Database connection
-DATABASE_URL = "postgresql://postgres:password@localhost:5432/job_scraping"
+DATABASE_URL = os.getenv('POSTGRES_URL', "postgresql://postgres:password@localhost:5432/job_scraping")
 db_pool = ThreadedConnectionPool(1, 10, DATABASE_URL)
 
 
