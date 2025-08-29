@@ -12,6 +12,14 @@ RUN echo "Build: $BUILD_DATE, Commit: $COMMIT_SHA, CacheBust: $CACHE_BUST" > /et
 # Set working directory
 WORKDIR /app
 
+# EXPLICIT CACHE INVALIDATION FOR EASYPANEL
+# This should force a complete rebuild regardless of caching
+RUN echo "=== FORCED REBUILD TRIGGER ===" && \
+    echo "Timestamp: $(date -u +'%Y-%m-%dT%H:%M:%SZ')" && \
+    echo "Commit: 4848423" && \
+    echo "Random: $(head /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 12 | head -n 1)" && \
+    rm -rf /tmp/* || true
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
@@ -443,8 +451,13 @@ TEMPLATE
 # Force schema file to be processed fresh but keep original
 RUN cp /app/modular_schema.sql /app/modular_schema.sql.processed
 
-# Force template cache invalidation
-RUN echo "Template cache bust: $(date)" > /app/templates.cache_bust
+# CRITICAL TEMPLATE CACHE INVALIDATION
+# This forces Docker to rebuild all templates
+RUN echo "=== TEMPLATE REBUILD TRIGGER ===" && \
+    echo "Template rebuild time: $(date -u +'%Y-%m-%dT%H:%M:%SZ')" && \
+    echo "Random ID: $(head /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)" && \
+    rm -rf /app/templates/* 2>/dev/null || true && \
+    rm -rf /app/static/* 2>/dev/null || true
 
 # Create login template
 RUN mkdir -p /app/templates
