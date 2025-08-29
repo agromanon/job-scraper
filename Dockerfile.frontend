@@ -14,7 +14,9 @@ RUN apt-get update && apt-get install -y \
 
 # Copy requirements and install Python dependencies
 COPY requirements.admin.txt /app/requirements.admin.txt
+COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.admin.txt
+RUN pip install --no-cache-dir psycopg2-binary requests
 
 # Copy JobSpy library
 COPY jobspy/ /app/jobspy/
@@ -422,7 +424,7 @@ body {
     font-weight: 700;
 }
 
-.metric-card hover {
+.metric-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
@@ -935,7 +937,7 @@ EXPOSE 5000 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+    CMD python -c "import requests; requests.get('http://localhost:5000/health')" || exit 1
 
 # default to flask app
 CMD ["python", "worker_admin.py"]
