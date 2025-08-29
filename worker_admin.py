@@ -875,8 +875,10 @@ if __name__ == '__main__':
     # Initialize database schema if not exists
     try:
         # Create tables using the schema file
-        with open('modular_schema.sql', 'r') as f:
+        schema_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'modular_schema.sql')
+        with open(schema_path, 'r') as f:
             schema_sql = f.read()
+        print(f"Reading schema from: {schema_path}")
         
         conn = get_db_connection()
         cursor = conn.cursor()
