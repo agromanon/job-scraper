@@ -413,6 +413,35 @@ setInterval(() => {
 {% endblock %}
 TEMPLATE
 
+# Create error template
+RUN cat > /app/templates/error.html << 'TEMPLATE'
+{% extends "base.html" %}
+
+{% block title %}Error - Job Scraper Admin{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="glass-card rounded-4 p-5 text-center">
+            <div class="mb-4">
+                <i class="bi bi-exclamation-triangle-fill text-warning" style="font-size: 4rem;"></i>
+            </div>
+            <h2 class="mb-3">Oops! Something went wrong</h2>
+            <p class="text-muted mb-4">{{ error }}</p>
+            <div class="d-flex gap-3 justify-content-center">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+                    <i class="bi bi-house-door me-2"></i>Go to Dashboard
+                </a>
+                <a href="javascript:history.back()" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-2"></i>Go Back
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+TEMPLATE
+
 # Create CSS file
 RUN cat > /app/static/css/style.css << 'CSS'
 body {
