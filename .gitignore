@@ -1,10 +1,80 @@
+# Virtual environments
 /venv/
+.venv/
+env/
+ENV/
+
+# IDE files
 /.idea
+.vscode/
+*.swp
+*.swo
+
+# Python cache and compiled files
 **/__pycache__/
 **/.pytest_cache/
+*.py[cod]
+*$py.class
+
+# Notebooks
 /.ipynb_checkpoints/
+
+# Output and data files
 **/output/
+temp/
+tmp/
+*.tmp
+*.temp
+
+# OS generated files
 **/.DS_Store
-*.pyc
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment and secrets
 .env
-dist
+.env.local
+.env.production
+.env.staging
+secrets/
+config/secrets/
+
+# Logs and runtime
+logs/
+*.log
+pids/
+*.pid
+*.seed
+
+# Database and backups
+*.backup
+*.sql.dump
+database_backups/
+
+# Build and distribution
+dist/
+build/
+*.egg-info/
+
+# Docker and EasyPanel
+.dockerignore
+.easypanel/
+deployment_artifacts/
+
+# Test coverage
+coverage/
+htmlcov/
+.coverage
+
+# SSL certificates
+ssl/
+*.pem
+*.crt
+*.key
+
+# Node modules
+node_modules/
