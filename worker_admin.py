@@ -1085,6 +1085,10 @@ def initialize_database_schema():
                     
                     cursor.close()
                     release_db_connection(conn)
+            except Exception as schema_e:
+                print(f"Error executing schema: {schema_e}")
+                app.logger.error(f"Schema execution error: {schema_e}")
+                raise
         
         app.logger.info("Database initialized successfully")
         print("="*50)
