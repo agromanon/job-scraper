@@ -829,21 +829,58 @@ if __name__ == '__main__':
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Split schema into individual statements
-        statements = schema_sql.split(';')
-        
-        for statement in statements:
-            statement = statement.strip()
-            if statement.startswith('--') or not statement:
-                continue
+        # Execute the entire schema at once to handle PL/pgSQL functions properly
+        try:
+            cursor.execute(schema_sql)
+            conn.commit()
+            app.logger.info("Database schema initialized successfully")
+        except Exception as e:
+            conn.rollback()
+            # If entire execution fails, try statement by statement for basic tables
+            if 'already exists' not in str(e).lower():
+                app.logger.warning(f"Full schema execution failed, trying individual statements: {e}")
                 
-            try:
-                cursor.execute(statement)
-                conn.commit()
-            except Exception as e:
-                if 'already exists' not in str(e).lower():
-                    conn.rollback()
-                    app.logger.error(f"Schema error: {e}")
+                # Split into statements, handling $$ functions
+                statements = []
+                current_statement = []
+                in_function = False
+                
+                for line in schema_sql.split('\n'):
+                    line = line.strip()
+                    if line.startswith('--') or not line:
+                        continue
+                    
+                    if line.startswith('CREATE OR REPLACE FUNCTION'):
+                        in_function = True
+                        current_statement.append(line)
+                    elif line.startswith('$$ language \'plpgsql\';'):
+                        current_statement.append(line)
+                        statements.append('\n'.join(current_statement))
+                        current_statement = []
+                        in_function = False
+                    elif in_function:
+                        current_statement.append(line)
+                    elif ';' in line:
+                        parts = line.split(';')
+                        if parts[0]:
+                            current_statement.append(parts[0])
+                        if '\n'.join(current_statement).strip():
+                            statements.append('\n'.join(current_statement))
+                        current_statement = []
+                    else:
+                        current_statement.append(line)
+                
+                # Execute individual statements
+                for statement in statements:
+                    statement = statement.strip()
+                    if statement and not statement.startswith('--'):
+                        try:
+                            cursor.execute(statement)
+                            conn.commit()
+                        except Exception as e:
+                            if 'already exists' not in str(e).lower():
+                                conn.rollback()
+                                app.logger.error(f"Schema error: {e}")
         
         cursor.close()
         release_db_connection(conn)
