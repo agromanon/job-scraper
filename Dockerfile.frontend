@@ -24,6 +24,7 @@ COPY jobspy/ /app/jobspy/
 # Copy application components
 COPY worker_admin.py /app/
 COPY worker_manager.py /app/
+COPY modular_schema.sql /app/
 
 # Create static directories and files
 RUN mkdir -p /app/templates /app/static/css /app/static/js /app/logs
