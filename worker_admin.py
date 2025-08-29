@@ -871,116 +871,115 @@ def health_check():
         }), 500
 
 
-if __name__ == '__main__':
-    # Initialize database schema if not exists
+# Initialize database schema if not exists - runs on all app startups
+try:
+    # Create tables using the schema file
+    schema_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'modular_schema.sql')
+    with open(schema_path, 'r') as f:
+        schema_sql = f.read()
+    print(f"Reading schema from: {schema_path}")
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Execute the entire schema at once to handle PL/pgSQL functions properly
     try:
-        # Create tables using the schema file
-        schema_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'modular_schema.sql')
-        with open(schema_path, 'r') as f:
-            schema_sql = f.read()
-        print(f"Reading schema from: {schema_path}")
-        
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Execute the entire schema at once to handle PL/pgSQL functions properly
-        try:
-            cursor.execute(schema_sql)
-            conn.commit()
-            app.logger.info("Database schema initialized successfully")
-        except Exception as e:
-            conn.rollback()
-            # If entire execution fails, try with better parsing
-            if 'already exists' not in str(e).lower():
-                app.logger.warning(f"Full schema execution failed, trying individual statements: {e}")
-                
-                # Split schema into different types of statements
-                create_table_statements = []
-                create_function_statements = []
-                create_trigger_statements = []
-                create_index_statements = []
-                create_view_statements = []
-                insert_statements = []
-                
-                current_statement = []
-                in_function = False
-                in_trigger = False
-                
-                for line in schema_sql.split('\n'):
-                    line = line.strip()
-                    if line.startswith('--') or not line:
-                        continue
-                    
-                    # Detect statement types
-                    if line.startswith('CREATE OR REPLACE FUNCTION'):
-                        in_function = True
-                        current_statement.append(line)
-                    elif line.startswith('CREATE TRIGGER'):
-                        in_trigger = True
-                        current_statement.append(line)
-                    elif line.startswith('$$ language \'plpgsql\';'):
-                        current_statement.append(line)
-                        if in_function:
-                            create_function_statements.append('\n'.join(current_statement))
-                            in_function = False
-                        elif in_trigger:
-                            create_trigger_statements.append('\n'.join(current_statement))
-                            in_trigger = False
-                        current_statement = []
-                    elif in_function or in_trigger:
-                        current_statement.append(line)
-                    elif ';' in line:
-                        parts = line.split(';')
-                        if parts[0]:
-                            current_statement.append(parts[0])
-                        full_statement = '\n'.join(current_statement).strip()
-                        
-                        if full_statement:
-                            if full_statement.startswith('CREATE TABLE'):
-                                create_table_statements.append(full_statement)
-                            elif full_statement.startswith('CREATE INDEX'):
-                                create_index_statements.append(full_statement)
-                            elif full_statement.startswith('CREATE VIEW'):
-                                create_view_statements.append(full_statement)
-                            elif full_statement.startswith('INSERT INTO'):
-                                insert_statements.append(full_statement)
-                        
-                        current_statement = []
-                    else:
-                        current_statement.append(line)
-                
-                # Execute statements in order of dependency
-                execution_order = [
-                    ("Tables", create_table_statements),
-                    ("Functions", create_function_statements), 
-                    ("Triggers", create_trigger_statements),
-                    ("Indexes", create_index_statements),
-                    ("Views", create_view_statements),
-                    ("Sample Data", insert_statements)
-                ]
-                
-                for stmt_type, statements in execution_order:
-                    app.logger.info(f"Creating {stmt_type}...")
-                    for statement in statements:
-                        try:
-                            cursor.execute(statement)
-                            conn.commit()
-                        except Exception as e:
-                            if 'already exists' in str(e).lower() or 'duplicate' in str(e).lower():
-                                app.logger.info(f"Skipped existing {stmt_type.lower()[:-1]}")
-                            else:
-                                conn.rollback()
-                                app.logger.error(f"Error creating {stmt_type.lower()[:-1]}: {e}")
-                
-                app.logger.info("Database schema initialized successfully (individual statements)")
-        
-        cursor.close()
-        release_db_connection(conn)
-        
-        app.logger.info("Database initialized successfully")
-    
+        cursor.execute(schema_sql)
+        conn.commit()
+        app.logger.info("Database schema initialized successfully")
     except Exception as e:
-        app.logger.error(f"Database initialization error: {e}")
+        conn.rollback()
+        # If entire execution fails, try with better parsing
+        if 'already exists' not in str(e).lower():
+            app.logger.warning(f"Full schema execution failed, trying individual statements: {e}")
+            
+            # Split schema into different types of statements
+            create_table_statements = []
+            create_function_statements = []
+            create_trigger_statements = []
+            create_index_statements = []
+            create_view_statements = []
+            insert_statements = []
+            
+            current_statement = []
+            in_function = False
+            in_trigger = False
+            
+            for line in schema_sql.split('\n'):
+                line = line.strip()
+                if line.startswith('--') or not line:
+                    continue
+                
+                # Detect statement types
+                if line.startswith('CREATE OR REPLACE FUNCTION'):
+                    in_function = True
+                    current_statement.append(line)
+                elif line.startswith('CREATE TRIGGER'):
+                    in_trigger = True
+                    current_statement.append(line)
+                elif line.startswith('$$ language \'plpgsql\';'):
+                    current_statement.append(line)
+                    if in_function:
+                        create_function_statements.append('\n'.join(current_statement))
+                        in_function = False
+                    elif in_trigger:
+                        create_trigger_statements.append('\n'.join(current_statement))
+                        in_trigger = False
+                    current_statement = []
+                elif in_function or in_trigger:
+                    current_statement.append(line)
+                elif ';' in line:
+                    parts = line.split(';')
+                    if parts[0]:
+                        current_statement.append(parts[0])
+                    full_statement = '\n'.join(current_statement).strip()
+                    
+                    if full_statement:
+                        if full_statement.startswith('CREATE TABLE'):
+                            create_table_statements.append(full_statement)
+                        elif full_statement.startswith('CREATE INDEX'):
+                            create_index_statements.append(full_statement)
+                        elif full_statement.startswith('CREATE VIEW'):
+                            create_view_statements.append(full_statement)
+                        elif full_statement.startswith('INSERT INTO'):
+                            insert_statements.append(full_statement)
+                    
+                    current_statement = []
+                else:
+                    current_statement.append(line)
+            
+            # Execute statements in order of dependency
+            execution_order = [
+                ("Tables", create_table_statements),
+                ("Functions", create_function_statements), 
+                ("Triggers", create_trigger_statements),
+                ("Indexes", create_index_statements),
+                ("Views", create_view_statements),
+                ("Sample Data", insert_statements)
+            ]
+            
+            for stmt_type, statements in execution_order:
+                app.logger.info(f"Creating {stmt_type}...")
+                for statement in statements:
+                    try:
+                        cursor.execute(statement)
+                        conn.commit()
+                    except Exception as e:
+                        if 'already exists' in str(e).lower() or 'duplicate' in str(e).lower():
+                            app.logger.info(f"Skipped existing {stmt_type.lower()[:-1]}")
+                        else:
+                            conn.rollback()
+                            app.logger.error(f"Error creating {stmt_type.lower()[:-1]}: {e}")
+            
+            app.logger.info("Database schema initialized successfully (individual statements)")
     
-    # Run Flask app
+    cursor.close()
+    release_db_connection(conn)
+    
+    app.logger.info("Database initialized successfully")
+
+except Exception as e:
+    app.logger.error(f"Database initialization error: {e}")
+
+if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
