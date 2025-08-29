@@ -1,7 +1,11 @@
 FROM python:3.11-slim
 
-# Force cache invalidation for complete rebuild
-ARG CACHE_BUST=1
+# Force complete cache invalidation
+ARG BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+ARG COMMIT_SHA=unknown
+ENV BUILD_DATE=$BUILD_DATE
+ENV COMMIT_SHA=$COMMIT_SHA
+RUN echo "Build: $BUILD_DATE, Commit: $COMMIT_SHA" > /etc/container_version
 
 # Set working directory
 WORKDIR /app
@@ -416,7 +420,11 @@ setInterval(() => {
 {% endblock %}
 TEMPLATE
 
+# Force schema file to be processed fresh
+RUN rm -f /app/modular_schema.sql && cp /app/modular_schema.sql /app/modular_schema.sql.processed
+
 # Create error template
+RUN mkdir -p /app/templates
 RUN cat > /app/templates/error.html << 'TEMPLATE'
 {% extends "base.html" %}
 
