@@ -819,6 +819,36 @@ def test_database(database_id):
         }), 500
 
 
+# Health check endpoint for monitoring
+@app.route('/health')
+def health_check():
+    """Health check endpoint for monitoring"""
+    try:
+        # Test database connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        cursor.fetchone()
+        cursor.close()
+        release_db_connection(conn)
+        
+        return jsonify({
+            'status': 'healthy',
+            'timestamp': datetime.utcnow().isoformat(),
+            'database': 'connected',
+            'app': 'job-scraper-admin'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'timestamp': datetime.utcnow().isoformat(),
+            'database': 'disconnected',
+            'error': str(e),
+            'app': 'job-scraper-admin'
+        }), 500
+
+
 if __name__ == '__main__':
     # Initialize database schema if not exists
     try:
