@@ -1,4 +1,4 @@
--- Enhanced modular scraping architecture with multi-database support
+-- Enhanced modular scraping architecture with multi-database support v2
 
 -- Worker configurations table
 CREATE TABLE scraping_workers (
@@ -484,3 +484,5 @@ INSERT INTO worker_templates (name, description, site, category, difficulty, tem
     '{"location": "Brazil", "job_type": ["FULL_TIME", "INTERNSHIP"], "results_per_run": 40, "schedule_hours": 48, "search_term": "junior OR estagio OR trainee"}');
 
 COMMIT;
+
+-- Schema version 2 - Force rebuild 2025-08-29

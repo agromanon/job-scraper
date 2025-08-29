@@ -31,7 +31,10 @@ COPY jobspy/ /app/jobspy/
 # Copy application components
 COPY worker_admin.py /app/
 COPY worker_manager.py /app/
-COPY modular_schema.sql /app/
+COPY modular_schema.sql /app/modular_schema.sql
+
+# Force schema cache invalidation
+RUN echo "Schema file updated: $(date)" >> /app/modular_schema.sql.cache_info
 
 # Create static directories and files
 RUN mkdir -p /app/templates /app/static/css /app/static/js /app/logs
