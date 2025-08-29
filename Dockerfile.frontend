@@ -3,9 +3,11 @@ FROM python:3.11-slim
 # Force complete cache invalidation
 ARG BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 ARG COMMIT_SHA=unknown
+ARG CACHE_BUST=$(uuidgen | head -c 8)
 ENV BUILD_DATE=$BUILD_DATE
 ENV COMMIT_SHA=$COMMIT_SHA
-RUN echo "Build: $BUILD_DATE, Commit: $COMMIT_SHA" > /etc/container_version
+ENV CACHE_BUST=$CACHE_BUST
+RUN echo "Build: $BUILD_DATE, Commit: $COMMIT_SHA, CacheBust: $CACHE_BUST" > /etc/container_version
 
 # Set working directory
 WORKDIR /app
@@ -167,7 +169,7 @@ RUN cat > /app/templates/base.html << 'TEMPLATE'
                         </a>
                     </li>
                     {% else %}
-                    <li class="nav-item">
+                    <li class="nav-item d-flex align-items-center">
                         <span class="navbar-text text-white">
                             <i class="bi bi-circle-fill text-warning me-1"></i>Authentication Required
                         </span>
@@ -440,6 +442,9 @@ TEMPLATE
 
 # Force schema file to be processed fresh but keep original
 RUN cp /app/modular_schema.sql /app/modular_schema.sql.processed
+
+# Force template cache invalidation
+RUN echo "Template cache bust: $(date)" > /app/templates.cache_bust
 
 # Create login template
 RUN mkdir -p /app/templates
