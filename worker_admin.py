@@ -26,10 +26,31 @@ import bcrypt
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', secrets.token_hex(32))
 
-# Database connection
-DATABASE_URL = os.getenv('POSTGRES_URL', "postgresql://aromanon:Afmg2486!@my-job-scraper_my-job-scraper:5432/job-data")
-print(f"DATABASE_URL: {DATABASE_URL}")  # Debug logging
-db_pool = ThreadedConnectionPool(1, 10, DATABASE_URL)
+# Database connection - parse individual parameters for better reliability
+POSTGRES_URL = os.getenv('POSTGRES_URL', "postgresql://aromanon:Afmg2486!@my-job-scraper_my-job-scraper:5432/job-data")
+print(f"POSTGRES_URL: {POSTGRES_URL}")  # Debug logging
+
+# Parse the POSTGRES_URL to extract individual components
+import urllib.parse as urlparse
+from urllib.parse import parse_qs
+
+try:
+    parsed = urlparse.urlparse(POSTGRES_URL)
+    DB_HOST = parsed.hostname
+    DB_PORT = parsed.port or 5432
+    DB_NAME = parsed.path[1:]  # Remove leading slash
+    DB_USER = parsed.username
+    DB_PASSWORD = parsed.password
+    
+    print(f"Parsed - Host: {DB_HOST}, Port: {DB_PORT}, Database: {DB_NAME}, User: {DB_USER}")
+    
+    # Build connection string from individual parameters
+    DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    db_pool = ThreadedConnectionPool(1, 10, DATABASE_URL)
+    
+except Exception as e:
+    print(f"Error parsing POSTGRES_URL: {e}")
+    raise
 
 
 # Forms
