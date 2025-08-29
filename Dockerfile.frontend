@@ -421,7 +421,7 @@ setInterval(() => {
 TEMPLATE
 
 # Force schema file to be processed fresh
-RUN rm -f /app/modular_schema.sql && cp /app/modular_schema.sql /app/modular_schema.sql.processed
+RUN cp /app/modular_schema.sql /app/modular_schema.sql.processed && rm -f /app/modular_schema.sql
 
 # Create error template
 RUN mkdir -p /app/templates
