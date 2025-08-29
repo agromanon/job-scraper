@@ -217,7 +217,7 @@ RUN cat > /app/templates/dashboard.html << 'TEMPLATE'
         <div class="glass-card rounded-4 p-4 mb-4">
             <div class="row align-items-center">
                 <div class="col-md-8">
-                    <h2 class="mb-0 fw-bold text-dark">Job Scraper Dashboard</h2>
+                    <h2 class="mb-0 fw-bold">Job Scraper Dashboard</h2>
                     <p class="text-muted mb-0">Monitor and manage your automated job scraping workers</p>
                 </div>
                 <div class="col-md-4 text-end">
@@ -916,7 +916,7 @@ RUN cat > /app/templates/workers.html << 'TEMPLATE'
         <div class="glass-card rounded-4 p-4">
             <div class="row align-items-center">
                 <div class="col-md-8">
-                    <h2 class="mb-0 fw-bold text-dark">Workers</h2>
+                    <h2 class="mb-0 fw-bold">Workers</h2>
                     <p class="text-muted mb-0">Manage your job scraping workers</p>
                 </div>
                 <div class="col-md-4 text-end">
@@ -1010,7 +1010,7 @@ RUN cat > /app/templates/databases.html << 'TEMPLATE'
         <div class="glass-card rounded-4 p-4">
             <div class="row align-items-center">
                 <div class="col-md-8">
-                    <h2 class="mb-0 fw-bold text-dark">Databases</h2>
+                    <h2 class="mb-0 fw-bold">Databases</h2>
                     <p class="text-muted mb-0">Manage your database connections</p>
                 </div>
                 <div class="col-md-4 text-end">
@@ -1096,7 +1096,8 @@ TEMPLATE
 # Create CSS file
 RUN cat > /app/static/css/style.css << 'CSS'
 body {
-    background-color: #f6f8fc;
+    background-color: #0f172a;
+    color: #e2e8f0;
     min-height: 100vh;
 }
 
@@ -1167,10 +1168,10 @@ body {
 
 /* Glass card layout fixes */
 .glass-card {
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(30, 41, 59, 0.95);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(100, 116, 139, 0.3);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
     border-radius: 16px;
     overflow: hidden;
 }
@@ -1223,9 +1224,9 @@ body {
 
 /* Worker card stability */
 .worker-card {
-    background: white;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    background: rgba(30, 41, 59, 0.9);
+    border: 1px solid rgba(100, 116, 139, 0.2);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
     border-radius: 12px;
     transition: all 0.3s ease;
     overflow: hidden;
@@ -1283,19 +1284,23 @@ body {
 /* Form layout fixes */
 .form-control, .form-select {
     border-radius: 8px;
-    border: 1px solid #e9ecef;
+    border: 1px solid #475569;
+    background-color: #1e293b;
+    color: #e2e8f0;
     transition: all 0.2s ease;
 }
 
 .form-control:focus, .form-select:focus {
     border-color: #667eea;
     box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    background-color: #1e293b;
+    color: #e2e8f0;
 }
 
 .form-label {
     font-weight: 600;
     margin-bottom: 0.5rem;
-    color: #495057;
+    color: #cbd5e1;
 }
 
 /* Navigation items spacing */
@@ -1312,13 +1317,23 @@ body {
 
 /* Table fixes */
 .table-hover tbody tr:hover {
-    background-color: rgba(102, 126, 234, 0.05);
+    background-color: rgba(102, 126, 234, 0.15);
     transform: translateX(2px);
     transition: all 0.2s ease;
 }
 
 .table {
     margin-bottom: 0;
+    color: #e2e8f0;
+}
+
+.table thead th {
+    border-color: #475569;
+    color: #cbd5e1;
+}
+
+.table tbody td {
+    border-color: #334155;
 }
 
 /* List group fixes */
@@ -1327,10 +1342,12 @@ body {
     transition: all 0.2s ease;
     border-radius: 8px;
     margin-bottom: 0.25rem;
+    background-color: rgba(30, 41, 59, 0.5);
+    color: #e2e8f0;
 }
 
 .list-group-item:hover {
-    background-color: rgba(102, 126, 234, 0.05);
+    background-color: rgba(102, 126, 234, 0.15);
     transform: translateX(2px);
 }
 
@@ -1406,6 +1423,14 @@ body {
     
     .row > * {
         padding: 0.25rem;
+    }
+    
+    .navbar-collapse {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        padding: 1rem;
+        border-radius: 12px;
+        margin-top: 1rem;
+        border: 1px solid rgba(100, 116, 139, 0.3);
     }
 }
 
