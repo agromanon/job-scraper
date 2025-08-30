@@ -891,6 +891,57 @@ def test_database(database_id):
         }), 500
 
 
+@app.route('/databases/<int:database_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_database(database_id):
+    """Edit existing database"""
+    # Fetch database record
+    databases = execute_query("SELECT * FROM scraping_databases WHERE id = %s", (database_id,), fetch=True)
+    
+    if not databases:
+        flash('Database not found', 'danger')
+        return redirect(url_for('list_databases'))
+    
+    db_record = databases[0]
+    form = DatabaseForm(obj=db_record)
+    
+    if form.validate_on_submit():
+        try:
+            execute_query("""
+                UPDATE scraping_databases SET
+                    name = %s,
+                    description = %s,
+                    host = %s,
+                    port = %s,
+                    database_name = %s,
+                    username = %s,
+                    password = %s,
+                    ssl_mode = %s,
+                    is_active = %s
+                WHERE id = %s
+            """, (
+                form.name.data,
+                form.description.data,
+                form.host.data,
+                form.port.data,
+                form.database_name.data,
+                form.username.data,
+                form.password.data,
+                form.ssl_mode.data,
+                form.is_active.data,
+                database_id
+            ))
+            
+            flash('Database updated successfully', 'success')
+            return redirect(url_for('list_databases'))
+            
+        except Exception as e:
+            flash(f'Error updating database: {e}', 'danger')
+            app.logger.error(f'Database update error: {e}')
+    
+    return render_template('database_form.html', form=form, action='edit')
+
+
 # Health check endpoint for monitoring
 @app.route('/health')
 def health_check():
