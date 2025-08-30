@@ -180,6 +180,8 @@ class DatabaseForm(FlaskForm):
     
     tags = StringField('Tags (comma-separated)', validators=[Optional()])
     
+    is_active = BooleanField('Active', default=True)
+    
     submit = SubmitField('Save Database')
 
 

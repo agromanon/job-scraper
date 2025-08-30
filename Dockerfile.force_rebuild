@@ -7,6 +7,7 @@ FROM python:3.11-slim
 ARG BUILD_TIMESTAMP=$(date -u +'%Y%m%d-%H%M%S')
 ARG BUILD_UUID=$(uuidgen | tr -d '-')
 ARG RANDOM_HASH=$(head /dev/urandom | tr -dc 'a-f0-9' | fold -w 32 | head -n 1)
+ARG FORCE_REBUILD_TRIGGER=$(date +%s%N)
 
 # Set environment variables that will force cache invalidation
 ENV FORCE_REBUILD_TIMESTAMP=${BUILD_TIMESTAMP}
