@@ -424,7 +424,7 @@ def new_worker():
                     schedule_hours, schedule_minute_offset, timezone, proxy_rotation_policy, proxies,
                     max_retries, timeout, rate_limit_requests, rate_limit_seconds, description_format,
                     linkedin_fetch_description, database_id, table_name, memory_limit_mb,
-                    cpu_limit_cores, max_runtime_minutes, max_consecutive_errors, auto_pause_on_errors, tags,
+                    cpu_limit_cores, max_runtime_minutes, max_consecutive_errors, status, auto_pause_on_errors, tags,
                     next_run
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
@@ -457,7 +457,7 @@ def new_worker():
                 form.memory_limit_mb.data,
                 form.cpu_limit_cores.data,
                 form.max_runtime_minutes.data,
-                form.max_consecutive_errors.data,
+                form.max_consecutive_errors.data,\n                form.status.data,
                 form.auto_pause_on_errors.data,
                 tags,
                 datetime.utcnow() + timedelta(minutes=schedule_minute_offset)  # Initial next_run
@@ -559,7 +559,7 @@ def edit_worker(worker_id):
                     form.memory_limit_mb.data,
                     form.cpu_limit_cores.data,
                     form.max_runtime_minutes.data,
-                    form.max_consecutive_errors.data,
+                    form.max_consecutive_errors.data,\n                form.status.data,
                     form.auto_pause_on_errors.data,
                     tags,
                     worker_id
@@ -1208,3 +1208,19 @@ except Exception as e:
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+
+@app.route('/databases/<int:database_id>/delete')
+@login_required
+def delete_database(database_id):
+    """Delete database"""
+    try:
+        execute_query("DELETE FROM scraping_databases WHERE id = %s", (database_id,), fetch=False, commit=True)
+        flash('Database deleted successfully!', 'success')
+        return redirect(url_for('list_databases'))
+    
+    except Exception as e:
+        app.logger.error(f"Database deletion error: {e}")
+        flash(f'Error deleting database: {str(e)}', 'error')
+        return redirect(url_for('list_databases'))
+
+
