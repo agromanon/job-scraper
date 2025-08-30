@@ -739,6 +739,539 @@ body {
 }
 CSS
 
+# Create worker form template
+RUN cat > /app/templates/worker_form.html << 'TEMPLATE'
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if action == 'edit' else 'Create' }} Worker - Job Scraper Admin{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="glass-card rounded-4 p-4">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="mb-0 fw-bold">{{ 'Edit' if action == 'edit' else 'Create' }} Worker</h1>
+                    <p class="text-muted mb-0">
+                        {% if action == 'edit' %}
+                            Modify existing worker configuration
+                        {% else %}
+                            Configure a new job scraping worker
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <a href="{{ url_for('list_workers') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Workers
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="glass-card rounded-4 p-4">
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                
+                <!-- Basic Configuration -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="mb-3"><i class="bi bi-gear me-2"></i>Basic Configuration</h5>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">{{ form.name.label }}</label>
+                        {{ form.name(class="form-control", placeholder="Enter worker name") }}
+                        {% if form.name.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.name.errors %}<div>{{ error }}</div>{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">{{ form.site.label }}</label>
+                        {{ form.site(class="form-select") }}
+                        {% if form.site.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.site.errors %}<div>{{ error }}</div>{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-12 mb-3">
+                        <label class="form-label fw-semibold">{{ form.description.label }}</label>
+                        {{ form.description(class="form-control", rows=2, placeholder="Worker description") }}
+                    </div>
+                </div>
+                
+                <!-- Search Configuration -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="mb-3"><i class="bi bi-search me-2"></i>Search Configuration</h5>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">{{ form.search_term.label }}</label>
+                        {{ form.search_term(class="form-control", placeholder="e.g., developer, engineer") }}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">{{ form.location.label }}</label>
+                        {{ form.location(class="form-control", placeholder="e.g., São Paulo, Remote") }}
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">{{ form.country.label }}</label>
+                        {{ form.country(class="form-control", placeholder="Country") }}
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">{{ form.distance.label }}</label>
+                        {{ form.distance(class="form-control") }}
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">{{ form.results_per_run.label }}</label>
+                        {{ form.results_per_run(class="form-control") }}
+                    </div>
+                </div>
+                
+                <!-- Schedule Configuration -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="mb-3"><i class="bi bi-clock me-2"></i>Schedule Configuration</h5>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">{{ form.schedule_hours.label }}</label>
+                        {{ form.schedule_hours(class="form-control") }}
+                        <small class="text-muted">How often to run (hours)</small>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">{{ form.schedule_minute_offset.label }}</label>
+                        {{ form.schedule_minute_offset(class="form-control") }}
+                        <small class="text-muted">Minute offset for staggered execution</small>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">{{ form.timezone.label }}</label>
+                        {{ form.timezone(class="form-control") }}
+                    </div>
+                </div>
+                
+                <!-- Advanced Configuration -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="mb-3"><i class="bi bi-sliders me-2"></i>Advanced Configuration</h5>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <div class="form-check form-switch">
+                            {{ form.is_remote(class="form-check-input") }}
+                            {{ form.is_remote.label(class="form-check-label") }}
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <div class="form-check form-switch">
+                            {{ form.easy_apply(class="form-check-input") }}
+                            {{ form.easy_apply.label(class="form-check-label") }}
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <div class="form-check form-switch">
+                            {{ form.status(class="form-check-input") }}
+                            {{ form.status.label(class="form-check-label") }}
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">{{ form.auto_pause_on_errors.label }}</label>
+                        {{ form.auto_pause_on_errors(class="form-select") }}
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">{{ form.max_consecutive_errors.label }}</label>
+                        {{ form.max_consecutive_errors(class="form-control") }}
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">{{ form.max_retries.label }}</label>
+                        {{ form.max_retries(class="form-control") }}
+                    </div>
+                </div>
+                
+                <!-- Resource Limits -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="mb-3"><i class="bi bi-cpu me-2"></i>Resource Limits</h5>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">{{ form.memory_limit_mb.label }}</label>
+                        {{ form.memory_limit_mb(class="form-control") }}
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">{{ form.cpu_limit_cores.label }}</label>
+                        {{ form.cpu_limit_cores(class="form-control") }}
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">{{ form.max_runtime_minutes.label }}</label>
+                        {{ form.max_runtime_minutes(class="form-control") }}
+                    </div>
+                </div>
+                
+                <!-- Database Configuration -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="mb-3"><i class="bi bi-database me-2"></i>Database Configuration</h5>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">{{ form.database_id.label }}</label>
+                        {{ form.database_id(class="form-select") }}
+                        {% if form.database_id.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.database_id.errors %}<div>{{ error }}</div>{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">{{ form.table_name.label }}</label>
+                        {{ form.table_name(class="form-control", placeholder="job_listings_table_name") }}
+                        {% if form.table_name.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.table_name.errors %}<div>{{ error }}</div>{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Submit Buttons -->
+                <div class="d-flex gap-2 justify-content-end">
+                    <a href="{{ url_for('list_workers') }}" class="btn btn-secondary">Cancel</a>
+                    {{ form.submit(class="btn btn-primary") }}
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="glass-card rounded-4 p-4">
+            <h5 class="mb-3"><i class="bi bi-info-circle me-2"></i>Worker Configuration Help</h5>
+            
+            <div class="mb-3">
+                <h6 class="fw-semibold">Basic Settings</h6>
+                <ul class="small text-muted">
+                    <li><strong>Name:</strong> Unique identifier for your worker</li>
+                    <li><strong>Site:</strong> Platform to scrape for jobs</li>
+                    <li><strong>Description:</strong> Optional notes about this worker</li>
+                </ul>
+            </div>
+            
+            <div class="mb-3">
+                <h6 class="fw-semibold">Search Settings</h6>
+                <ul class="small text-muted">
+                    <li><strong>Search Term:</strong> Keywords to find in job titles</li>
+                    <li><strong>Location:</strong> Geographic area or "Remote"</li>
+                    <li><strong>Distance:</strong> Radius around location (miles)</li>
+                </ul>
+            </div>
+            
+            <div class="mb-3">
+                <h6 class="fw-semibold">Schedule Settings</h6>
+                <ul class="small text-muted">
+                    <li><strong>Hours:</strong> How often to run the worker</li>
+                    <li><strong>Offset:</strong> Minute offset to stagger runs</li>
+                    <li><strong>Timezone:</strong> IANA timezone identifier</li>
+                </ul>
+            </div>
+            
+            <div class="mb-3">
+                <h6 class="fw-semibold">Resource Limits</h6>
+                <ul class="small text-muted">
+                    <li><strong>Memory:</strong> Maximum RAM usage in MB</li>
+                    <li><strong>CPU:</strong> Maximum CPU cores to use</li>
+                    <li><strong>Runtime:</strong> Maximum execution time in minutes</li>
+                </ul>
+            </div>
+            
+            {% if action == 'create' %}
+            <div class="alert alert-info">
+                <i class="bi bi-lightbulb me-2"></i>
+                <small>After creating a worker, it will automatically start according to the schedule defined above.</small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+TEMPLATE
+
+# Create database form template
+RUN cat > /app/templates/database_form.html << 'TEMPLATE'
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if action == 'edit' else 'Create' }} Database - Job Scraper Admin{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="glass-card rounded-4 p-4">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="mb-0 fw-bold">{{ 'Edit' if action == 'edit' else 'Create' }} Database</h1>
+                    <p class="text-muted mb-0">
+                        {% if action == 'edit' %}
+                            Modify existing database connection
+                        {% else %}
+                            Configure a new database connection
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <a href="{{ url_for('list_databases') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Databases
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="glass-card rounded-4 p-4">
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                
+                <!-- Basic Configuration -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="mb-3"><i class="bi bi-gear me-2"></i>Basic Configuration</h5>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">{{ form.name.label }}</label>
+                        {{ form.name(class="form-control", placeholder="Enter database name") }}
+                        {% if form.name.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.name.errors %}<div>{{ error }}</div>{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <div class="form-check form-switch mt-4">
+                            {{ form.is_active(class="form-check-input") }}
+                            {{ form.is_active.label(class="form-check-label") }}
+                        </div>
+                    </div>
+                    
+                    <div class="col-12 mb-3">
+                        <label class="form-label fw-semibold">{{ form.description.label }}</label>
+                        {{ form.description(class="form-control", rows=2, placeholder="Database connection description") }}
+                    </div>
+                </div>
+                
+                <!-- Connection Settings -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="mb-3"><i class="bi bi-link-45deg me-2"></i>Connection Settings</h5>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">{{ form.host.label }}</label>
+                        {{ form.host(class="form-control", placeholder="localhost, db.example.com") }}
+                        {% if form.host.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.host.errors %}<div>{{ error }}</div>{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">{{ form.port.label }}</label>
+                        {{ form.port(class="form-control", placeholder="5432") }}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">{{ form.database_name.label }}</label>
+                        {{ form.database_name(class="form-control", placeholder="database_name") }}
+                        {% if form.database_name.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.database_name.errors %}<div>{{ error }}</div>{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">{{ form.username.label }}</label>
+                        {{ form.username(class="form-control", placeholder="postgres, admin") }}
+                        {% if form.username.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.username.errors %}<div>{{ error }}</div>{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">{{ form.password.label }}</label>
+                        {{ form.password(class="form-control", placeholder="Database password") }}
+                        {% if form.password.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.password.errors %}<div>{{ error }}</div>{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">{{ form.ssl_mode.label }}</label>
+                        {{ form.ssl_mode(class="form-select") }}
+                    </div>
+                </div>
+                
+                <!-- Performance Settings -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="mb-3"><i class="bi bi-speedometer2 me-2"></i>Performance Settings</h5>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">{{ form.connection_pool_size.label }}</label>
+                        {{ form.connection_pool_size(class="form-control") }}
+                        <small class="text-muted">Initial pool connections</small>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">{{ form.max_connections.label }}</label>
+                        {{ form.max_connections(class="form-control") }}
+                        <small class="text-muted">Maximum concurrent connections</small>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">{{ form.connection_timeout_seconds.label }}</label>
+                        {{ form.connection_timeout_seconds(class="form-control") }}
+                        <small class="text-muted">Connection timeout (seconds)</small>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">{{ form.batch_size.label }}</label>
+                        {{ form.batch_size(class="form-control") }}
+                        <small class="text-muted">Batch insert size</small>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">{{ form.target_table_prefix.label }}</label>
+                        {{ form.target_table_prefix(class="form-control") }}
+                        <small class="text-muted">Table name prefix</small>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">{{ form.deduplication_method.label }}</label>
+                        {{ form.deduplication_method(class="form-select") }}
+                        <small class="text-muted">Duplicate detection method</small>
+                    </div>
+                </div>
+                
+                <!-- Advanced Settings -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="mb-3"><i class="bi bi-sliders me-2"></i>Advanced Settings</h5>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <div class="form-check form-switch">
+                            {{ form.create_schema_if_not_exists(class="form-check-input") }}
+                            {{ form.create_schema_if_not_exists.label(class="form-check-label") }}
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">{{ form.deduplication_fields.label }}</label>
+                        {{ form.deduplication_fields(class="form-control", placeholder="job_url,title,company") }}
+                        <small class="text-muted">Comma-separated field names</small>
+                    </div>
+                </div>
+                
+                <!-- Submit Buttons -->
+                <div class="d-flex gap-2 justify-content-end">
+                    <a href="{{ url_for('list_databases') }}" class="btn btn-secondary">Cancel</a>
+                    {{ form.submit(class="btn btn-primary") }}
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="glass-card rounded-4 p-4">
+            <h5 class="mb-3"><i class="bi bi-info-circle me-2"></i>Database Configuration Help</h5>
+            
+            <div class="mb-3">
+                <h6 class="fw-semibold">Connection Settings</h6>
+                <ul class="small text-muted">
+                    <li><strong>Host:</strong> Database server hostname or IP</li>
+                    <li><strong>Port:</strong> Database port (default 5432)</li>
+                    <li><strong>Database Name:</strong> Name of the database to connect to</li>
+                    <li><strong>Username:</strong> Database user with proper permissions</li>
+                    <li><strong>Password:</strong> User password for authentication</li>
+                </ul>
+            </div>
+            
+            <div class="mb-3">
+                <h6 class="fw-semibold">SSL Mode Options</h6>
+                <ul class="small text-muted">
+                    <li><strong>require:</strong> Always require SSL (recommended)</li>
+                    <li><strong>prefer:</strong> Use SSL if available, fall back to no SSL</li>
+                    <li><strong>allow:</strong> Try no SSL first, then SSL</li>
+                    <li><strong>disable:</strong> No SSL encryption</li>
+                </ul>
+            </div>
+            
+            <div class="mb-3">
+                <h6 class="fw-semibold">Performance Settings</h6>
+                <ul class="small text-muted">
+                    <li><strong>Connection Pool:</strong> Initial connections to maintain</li>
+                    <li><strong>Max Connections:</strong> Limit concurrent connections</li>
+                    <li><strong>Batch Size:</strong> Records per batch insert</li>
+                </ul>
+            </div>
+            
+            <div class="mb-3">
+                <h6 class="fw-semibold">Deduplication</h6>
+                <ul class="small text-muted">
+                    <li><strong>unique_id:</strong> Use a single unique field</li>
+                    <li><strong>composite_key:</strong> Use multiple fields together</li>
+                    <li><strong>none:</strong> No duplicate detection</li>
+                </ul>
+            </div>
+            
+            {% if action == 'create' %}
+            <div class="alert alert-info">
+                <i class="bi bi-shield-lock me-2"></i>
+                <small>Database passwords are stored encrypted in the database.</small>
+            </div>
+            {% else %}
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <small>Changing database settings may require workers to be restarted.</small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+TEMPLATE
+
 # Set Flask environment
 ENV FLASK_APP=worker_admin.py
 ENV FLASK_ENV=production
