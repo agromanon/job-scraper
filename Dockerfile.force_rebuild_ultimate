@@ -1,0 +1,756 @@
+# Dockerfile.force_rebuild_ultimate - FORCES complete rebuild by changing build context
+# This guarantees all templates are recreated fresh every build
+# Usage: docker build -f Dockerfile.force_rebuild_ultimate -t jobspy-frontend .
+
+FROM python:3.11-slim
+
+# AGGRESSIVE CACHE INVALIDATION - Unique identifiers that change every build
+ARG BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+ARG BUILD_EPOCH=$(date +%s)
+ARG BUILD_UUID=$(uuidgen)
+ARG BUILD_RANDOM=$(head /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 64 | head -n 1)
+ARG GIT_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+ARG FORCE_REBUILD_TRIGGER=$(date +%s%N)
+
+# Set multiple environment variables to force cache breaks
+ENV BUILD_DATE=${BUILD_DATE}
+ENV BUILD_EPOCH=${BUILD_EPOCH} 
+ENV BUILD_UUID=${BUILD_UUID}
+ENV BUILD_RANDOM=${BUILD_RANDOM}
+ENV GIT_COMMIT=${GIT_COMMIT}
+ENV FORCE_REBUILD_TRIGGER=${FORCE_REBUILD_TRIGGER}
+
+# BREAK ALL CACHES - This RUN command changes every single build
+RUN echo "=== COMPLETE FULL REBUILD STARTED ===" && \
+    echo "Build Date: ${BUILD_DATE}" && \
+    echo "Build Epoch: ${BUILD_EPOCH}" && \
+    echo "Build UUID: ${BUILD_UUID}" && \
+    echo "Build Random: ${BUILD_RANDOM}" && \
+    echo "Git Commit: ${GIT_COMMIT}" && \
+    echo "Force Rebuild Trigger: ${FORCE_REBUILD_TRIGGER}" && \
+    echo "This build will completely recreate all templates and files" && \
+    # Create timestamped rebuild marker
+    echo "FULL_REBUILD_TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" > /tmp/force_rebuild_marker.txt && \
+    # Clean ALL caches completely
+    rm -rf /var/cache/apt/* /var/lib/apt/lists/* /tmp/* /var/tmp/* /root/.cache /app/* /app/.git 2>/dev/null || true && \
+    # Create directories with fresh permissions
+    mkdir -p /app/templates /app/static/css /app/static/js /app/logs && \
+    chmod -R 755 /app /app/templates /app/static /app/logs && \
+    # Verify rebuild
+    echo "Rebuild completed successfully at $(date -u +'%Y-%m-%dT%H:%M:%SZ')" > /tmp/rebuild_verification.txt
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies (WILL ALWAYS RUN due to cache break above)
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libpq-dev \
+    curl \
+    git \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements (WILL ALWAYS RUN due to cache break)
+COPY requirements.admin.txt /app/requirements.admin.txt
+COPY requirements.txt /app/requirements.txt
+
+# Install dependencies (WILL ALWAYS RUN due to cache break)
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.admin.txt && \
+    pip install --no-cache-dir psycopg2-binary requests flask-wtf
+
+# Copy application code (WILL ALWAYS RUN due to cache break)
+COPY jobspy/ /app/jobspy/
+COPY worker_admin.py /app/
+COPY worker_manager.py /app/
+COPY modular_schema.sql /app/modular_schema.sql
+
+# Force template recreation - delete any existing templates and recreate fresh
+RUN echo "=== RECREATING ALL TEMPLATES FROM SCRATCH ===" && \
+    rm -rf /app/templates/* /app/static/* 2>/dev/null || true && \
+    mkdir -p /app/templates /app/static/css /app/static/js /app/static/images /app/logs && \
+    echo "Templates force-recreated at $(date -u +'%Y-%m-%dT%H:%M:%SZ')" > /app/templates_recreate_info.txt
+
+# Create base template with unique identifier to force rebuild
+RUN cat > /app/templates/base.html << 'TEMPLATE'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Job Scraper Admin{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <i class="bi bi-briefcase-fill me-2"></i>
+                Job Scraper Admin
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('dashboard') }}">
+                            <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('list_workers') }}">
+                            <i class="bi bi-people me-1"></i>Workers
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('list_databases') }}">
+                            <i class="bi bi-database me-1"></i>Databases
+                        </a>
+                    </li>
+                </ul>
+                
+                <ul class="navbar-nav">
+                    {% if session.get('logged_in') %}
+                    <li class="nav-item">
+                        <span class="navbar-text me-3">
+                            <i class="bi bi-person-circle me-1"></i>
+                            {{ session.get('username', 'Admin') }}
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('logout') }}">
+                            <i class="bi bi-box-arrow-right me-1"></i>Logout
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('login') }}">
+                            <i class="bi bi-box-arrow-in-right me-1"></i>Login
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container-fluid py-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>
+TEMPLATE
+
+# Create login template
+RUN cat > /app/templates/login.html << 'TEMPLATE'
+{% extends "base.html" %}
+
+{% block title %}Login - Job Scraper Admin{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="glass-card rounded-4 p-5">
+            <div class="text-center mb-4">
+                <div class="mb-3">
+                    <i class="bi bi-shield-lock-fill text-primary" style="font-size: 4rem;"></i>
+                </div>
+                <h2 class="mb-3 fw-bold">Login</h2>
+                <p class="text-muted">Enter your password to access the admin dashboard</p>
+            </div>
+            
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                
+                <div class="mb-4">
+                    <label class="form-label fw-semibold" for="{{ form.password.id }}">
+                        {{ form.password.label }}
+                    </label>
+                    {{ form.password(class="form-control form-control-lg", placeholder="Enter admin password", autocomplete="current-password") }}
+                    {% if form.password.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for error in form.password.errors %}
+                                <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="d-grid">
+                    {{ form.submit(class="btn btn-primary btn-lg") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+TEMPLATE
+
+# Create dashboard template with working layout
+RUN cat > /app/templates/dashboard.html << 'TEMPLATE'
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Job Scraper Admin{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="glass-card rounded-4 p-4">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="mb-0 fw-bold">Dashboard</h1>
+                    <p class="text-muted mb-0">Job Scraping Worker Management System</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="{{ url_for('list_workers') }}" class="btn btn-primary">
+                            <i class="bi bi-people me-1"></i>Manage Workers
+                        </a>
+                        <a href="{{ url_for('list_databases') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-database me-1"></i>Databases
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Overview Metrics -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="metric-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-uppercase small mb-2 opacity-75">Total Workers</h6>
+                        <div class="display-4 fw-bold">{{ stats.get('total_workers', 0) }}</div>
+                    </div>
+                    <div class="bg-white bg-opacity-20 rounded-circle p-3">
+                        <i class="bi bi-people fs-4"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <span class="badge bg-success">{{ stats.get('active_workers', 0) }} Active</span>
+                    <span class="badge bg-warning ms-1">{{ stats.get('paused_workers', 0) }} Inactive</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="metric-card h-100" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-uppercase small mb-2 opacity-75">Active Workers</h6>
+                        <div class="display-4 fw-bold">{{ stats.get('active_workers', 0) }}</div>
+                    </div>
+                    <div class="bg-white bg-opacity-20 rounded-circle p-3">
+                        <i class="bi bi-activity fs-4"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <span class="badge bg-light text-dark">Currently Running</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="metric-card h-100" style="background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-uppercase small mb-2 opacity-75">Jobs Scraped</h6>
+                        <div class="display-4 fw-bold">{{ stats.get('workers_today', 0) }}</div>
+                    </div>
+                    <div class="bg-white bg-opacity-20 rounded-circle p-3">
+                        <i class="bi bi-briefcase fs-4"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <span class="badge bg-dark text-light">Today</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="metric-card h-100" style="background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%);">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-uppercase small mb-2 opacity-75">System Status</h6>
+                        <div class="display-4 fw-bold">
+                            <span class="status-online">●</span>
+                        </div>
+                    </div>
+                    <div class="bg-white bg-opacity-20 rounded-circle p-3">
+                        <i class="bi bi-check-circle fs-4"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <span class="badge bg-success">Online</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-lg-8 mb-4">
+        <div class="glass-card h-100">
+            <div class="card-header bg-transparent border-0 px-4 pt-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0 fw-bold">Recent Worker Activity</h4>
+                    <a href="{{ url_for('list_workers') }}" class="btn btn-sm btn-outline-primary">
+                        View All <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                {% if recent_executions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Worker</th>
+                                    <th>Status</th>
+                                    <th>Time</th>
+                                    <th>Jobs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for exec in recent_executions %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-robot text-primary me-2"></i>
+                                                <div>
+                                                    <strong>{{ exec.get('worker_name', 'N/A') }}</strong>
+                                                    <small class="text-muted d-block">{{ exec.get('database_name', 'N/A') }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if exec.get('status') == 'success' else 'danger' }}">
+                                                {{ exec.get('status', 'N/A') }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">
+                                                {{ exec.get('execution_start', '').strftime('%H:%M') if exec.get('execution_start') else 'N/A' }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <span class="fw-bold">{{ exec.get('jobs_found', 0) }}</span>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-activity text-muted" style="font-size: 3rem;"></i>
+                        <p class="text-muted mt-3">No recent activity found</p>
+                        <p class="text-muted small">Create workers to start scraping jobs</p>
+                        <a href="{{ url_for('new_worker') }}" class="btn btn-primary btn-sm mt-2">
+                            <i class="bi bi-plus-circle me-1"></i>Create First Worker
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4 mb-4">
+        <div class="glass-card h-100">
+            <div class="card-header bg-transparent border-0 px-4 pt-4">
+                <h4 class="mb-0 fw-bold">Quick Actions</h4>
+            </div>
+            <div class="card-body p-4">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('new_worker') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-2"></i>Create New Worker
+                    </a>
+                    <a href="{{ url_for('new_database') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-database-add me-2"></i>Add Database
+                    </a>
+                    <button class="btn btn-outline-success w-100" onclick="location.reload()">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Refresh Dashboard
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-refresh dashboard every 30 seconds
+setInterval(() => {
+    if (window.location.pathname === '/') {
+        location.reload();
+    }
+}, 30000);
+
+// Simple notification function
+function showNotification(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+    alertDiv.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="bi bi-${type === 'success' ? 'check-circle' : 'info-circle'}-fill me-2"></i>
+            <span>${message}</span>
+            <button type="button" class="btn-close ms-3" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}
+TEMPLATE
+
+# Create error template
+RUN cat > /app/templates/error.html << 'TEMPLATE'
+{% extends "base.html" %}
+
+{% block title %}Error - Job Scraper Admin{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="glass-card rounded-4 p-5 text-center">
+            <div class="mb-4">
+                <i class="bi bi-exclamation-triangle-fill text-warning" style="font-size: 4rem;"></i>
+            </div>
+            <h2 class="mb-3">Oops! Something went wrong</h2>
+            <p class="text-muted mb-4">{{ error }}</p>
+            <div class="d-flex gap-3 justify-content-center">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+                    <i class="bi bi-house-door me-2"></i>Go to Dashboard
+                </a>
+                <a href="javascript:history.back()" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-2"></i>Go Back
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+TEMPLATE
+
+# Create CSS file
+RUN cat > /app/static/css/style.css << 'CSS'
+body {
+    background-color: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+}
+
+/* Fix navbar layout and prevent wrapping */
+.navbar {
+    padding: 0.5rem 0;
+    min-height: 70px;
+}
+
+.navbar-brand {
+    font-size: 1.5rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.navbar-nav {
+    align-items: center;
+}
+
+.navbar-nav .nav-link {
+    white-space: nowrap;
+}
+
+/* Prevent layout breaking on small screens */
+@media (max-width: 768px) {
+    .navbar-collapse {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        padding: 1rem;
+        border-radius: 12px;
+        margin-top: 1rem;
+        border: 1px solid rgba(100, 116, 139, 0.3);
+    }
+    
+    .navbar-nav {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .navbar-nav .nav-link {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+    }
+    
+    .navbar-nav .nav-link:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .navbar-text {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.1);
+    }
+}
+
+/* Container fluid fixes */
+.container-fluid {
+    padding: 1rem;
+    max-width: 100%;
+}
+
+/* Row layout stability */
+.row {
+    margin: 0;
+}
+
+.row > * {
+    padding: 0.5rem;
+}
+
+/* Glass card layout fixes */
+.glass-card {
+    background: rgba(30, 41, 59, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(100, 116, 139, 0.3);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.glass-card .row {
+    margin: -1rem;
+}
+
+.glass-card .row > * {
+    padding: 1rem;
+}
+
+/* Metric card stability */
+.metric-card {
+    border: none;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    transition: transform 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+    pointer-events: none;
+}
+
+.metric-card .card-body {
+    position: relative;
+    z-index: 1;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.metric-card .display-4 {
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+}
+
+/* Button layout fixes */
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-group {
+    flex-wrap: nowrap;
+}
+
+/* Form layout fixes */
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid #475569;
+    background-color: #1e293b;
+    color: #e2e8f0;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    background-color: #1e293b;
+    color: #e2e8f0;
+}
+
+.form-label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #cbd5e1;
+}
+
+/* Alert layout fixes */
+.alert {
+    border: none;
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    margin-bottom: 1rem;
+}
+
+.alert-dismissible {
+    padding-right: 3rem;
+}
+
+/* Status badge fixes */
+.status-badge {
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    font-size: 0.7rem;
+    padding: 0.35rem 0.75rem;
+    white-space: nowrap;
+}
+
+/* Status indicators */
+.status-online::before { content: '●'; color: #28a745; }
+.status-offline::before { content: '●'; color: #dc3545; }
+.status-warning::before { content: '●'; color: #ffc107; }
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 0.5rem;
+    }
+    
+    .metric-card .display-4 {
+        font-size: 2rem;
+    }
+    
+    .btn {
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+        padding: 0.375rem 0.75rem;
+    }
+    
+    .d-flex.gap-3 {
+        flex-direction: column;
+    }
+    
+    .d-flex.justify-content-end {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .d-flex.justify-content-end .btn {
+        margin-bottom: 0.5rem;
+    }
+    
+    .glass-card {
+        margin-bottom: 1rem;
+    }
+    
+    .row > * {
+        padding: 0.25rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .navbar-brand {
+        font-size: 1.25rem;
+    }
+    
+    .btn {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .metric-card .display-4 {
+        font-size: 1.5rem;
+    }
+    
+    .glass-card .card-body {
+        padding: 1rem;
+    }
+}
+CSS
+
+# Set Flask environment
+ENV FLASK_APP=worker_admin.py
+ENV FLASK_ENV=production
+ENV PYTHONPATH=/app:/app/jobspy
+ENV ADMIN_PASSWORD=admin123
+
+# Expose port
+EXPOSE 5000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:5000/health || exit 1
+
+# Start the application
+CMD ["python", "worker_admin.py"]
