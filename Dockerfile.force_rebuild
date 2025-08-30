@@ -99,12 +99,12 @@ RUN cat > /app/templates/base.html << 'TEMPLATE'
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('workers') }}">
+                        <a class="nav-link" href="{{ url_for('list_workers') }}">
                             <i class="bi bi-people me-1"></i>Workers
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('databases') }}">
+                        <a class="nav-link" href="{{ url_for('list_databases') }}">
                             <i class="bi bi-database me-1"></i>Databases
                         </a>
                     </li>
