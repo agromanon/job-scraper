@@ -140,6 +140,14 @@ class WorkerForm(FlaskForm):
     max_consecutive_errors = IntegerField('Max Consecutive Errors', default=5, validators=[NumberRange(min=1, max=20)])
     auto_pause_on_errors = BooleanField('Auto-Pause on Errors', default=True)
     
+    # Status and monitoring
+    status = SelectField('Status', choices=[
+        ('active', 'Active'),
+        ('paused', 'Paused'),
+        ('stopped', 'Stopped'),
+        ('error', 'Error')
+    ], default='active')
+    
     tags = StringField('Tags (comma-separated)', validators=[Optional()])
     
     submit = SubmitField('Save Worker')
