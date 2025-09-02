@@ -269,10 +269,14 @@ class ScrapingWorker:
             # Handle company information
             if 'company_name' not in result or result['company_name'] is None:
                 if 'company' in result and result['company'] is not None and not (isinstance(result['company'], float) and math.isnan(result['company'])):
+                    # Handle different company data formats from JobSpy
                     if isinstance(result['company'], dict) and 'name' in result['company']:
                         result['company_name'] = result['company']['name']
                     elif hasattr(result['company'], 'name'):
                         result['company_name'] = result['company'].name
+                    elif isinstance(result['company'], str):
+                        # Company is provided as a direct string
+                        result['company_name'] = result['company']
                 # Fallback: Try to extract company name from description
                 elif 'description' in result and result['description']:
                     import re
