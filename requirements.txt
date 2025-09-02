@@ -20,6 +20,11 @@ beautifulsoup4==4.12.2
 lxml==4.9.3
 markdownify==0.13.1
 
+# JobSpy dependencies
+pydantic==2.3.0
+regex==2024.4.28
+tls-client==1.0.1
+
 # Task scheduling
 schedule==1.2.0
 
