@@ -13,6 +13,7 @@ import sys
 import os
 import uuid
 import traceback
+import math
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
@@ -422,12 +423,24 @@ class ScrapingWorker:
                 if not filtered_job:
                     continue
                     
-                # Process special data types
+                # Process special data types and handle NaN values
                 processed_job = {}
                 for key, value in filtered_job.items():
                     if key == 'job_type' and isinstance(value, list):
-                        # Convert array to JSON for JSONB column
-                        processed_job[key] = json.dumps(value)
+                        # Convert array to JSON for JSONB column, handling NaN values
+                        try:
+                            # Filter out NaN values from the array
+                            filtered_array = [v for v in value if v is not None and (not isinstance(v, float) or not math.isnan(v))]
+                            processed_job[key] = json.dumps(filtered_array)
+                        except (TypeError, ValueError):
+                            # If we can't serialize, store as empty array
+                            processed_job[key] = json.dumps([])
+                    elif isinstance(value, float) and math.isnan(value):
+                        # Skip NaN values entirely
+                        continue
+                    elif isinstance(value, float) and math.isinf(value):
+                        # Skip infinity values entirely
+                        continue
                     else:
                         processed_job[key] = value
                 
