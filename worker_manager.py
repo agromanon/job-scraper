@@ -273,14 +273,24 @@ class ScrapingWorker:
                         result['company_name'] = result['company']['name']
                     elif hasattr(result['company'], 'name'):
                         result['company_name'] = result['company'].name
-                # Fallback: Try to extract company name from description or job URL
+                # Fallback: Try to extract company name from description
                 elif 'description' in result and result['description']:
-                    # Look for company name patterns in description
                     import re
-                    # Look for "Empresa:" or similar patterns
-                    company_match = re.search(r'(?:Empresa|Companhia|Organiza..o)[:\s]+([^\n\r.]{2,50})', result['description'], re.IGNORECASE)
-                    if company_match:
-                        result['company_name'] = company_match.group(1).strip()
+                    # Look for company name patterns in description
+                    company_patterns = [
+                        r'Empresa:\s*([^\n\r.]{2,100})',
+                        r'Organização:\s*([^\n\r.]{2,100})',
+                        r'Companhia:\s*([^\n\r.]{2,100})',
+                        r'Contratante:\s*([^\n\r.]{2,100})'
+                    ]
+                    for pattern in company_patterns:
+                        company_match = re.search(pattern, result['description'], re.IGNORECASE)
+                        if company_match:
+                            company_name = company_match.group(1).strip()
+                            # Filter out common job board names
+                            if not any(job_board in company_name.lower() for job_board in ['divulga vagas', 'indeed', 'linkedin', 'glassdoor']):
+                                result['company_name'] = company_name
+                                break
             
             if 'company_url' not in result or result['company_url'] is None:
                 if 'company' in result and result['company']:
