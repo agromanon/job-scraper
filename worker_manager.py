@@ -240,6 +240,10 @@ class ScrapingWorker:
             )
             
             self.metrics['jobs_found'] = len(df)
+            # Debug logging
+            if len(df) > 0:
+                logger.debug(f"JobSpy DataFrame columns: {list(df.columns)}")
+                logger.debug(f"First job data: {df.iloc[0].to_dict()}")
             return df.to_dict('records')
             
         except Exception as e:
