@@ -1480,3 +1480,9 @@ function testDatabase(databaseId) {
 </script>
 {% endblock %}
 TEMPLATE
+
+# Expose port
+EXPOSE 5000
+
+# Run the application
+CMD ["python", "worker_admin.py"]
