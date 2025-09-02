@@ -261,6 +261,21 @@ class ScrapingWorker:
             if 'site' in result and 'source_site' not in result:
                 result['source_site'] = result.pop('site')
             
+            # Handle company information
+            if 'company_name' not in result or result['company_name'] is None:
+                if 'company' in result and result['company']:
+                    if isinstance(result['company'], dict) and 'name' in result['company']:
+                        result['company_name'] = result['company']['name']
+                    elif hasattr(result['company'], 'name'):
+                        result['company_name'] = result['company'].name
+            
+            if 'company_url' not in result or result['company_url'] is None:
+                if 'company' in result and result['company']:
+                    if isinstance(result['company'], dict) and 'url' in result['company']:
+                        result['company_url'] = result['company']['url']
+                    elif hasattr(result['company'], 'url'):
+                        result['company_url'] = result['company'].url
+            
             # Handle compensation
             if 'compensation' in result and result['compensation']:
                 comp = result['compensation']
@@ -272,9 +287,21 @@ class ScrapingWorker:
             # Handle location
             if 'location' in result and result['location']:
                 location = result['location']
-                result['location_city'] = getattr(location, 'city', None)
-                result['location_state'] = getattr(location, 'state', None)
-                result['location_country'] = getattr(location, 'country', None)
+                # Handle Location object from JobSpy
+                if hasattr(location, 'city'):
+                    result['location_city'] = location.city
+                elif isinstance(location, dict) and 'city' in location:
+                    result['location_city'] = location['city']
+                
+                if hasattr(location, 'state'):
+                    result['location_state'] = location.state
+                elif isinstance(location, dict) and 'state' in location:
+                    result['location_state'] = location['state']
+                
+                if hasattr(location, 'country'):
+                    result['location_country'] = location.country
+                elif isinstance(location, dict) and 'country' in location:
+                    result['location_country'] = location['country']
             
             # Flatten job type
             if 'job_type' in result and result['job_type']:
