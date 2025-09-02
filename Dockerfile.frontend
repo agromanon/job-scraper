@@ -851,6 +851,12 @@ RUN cat > /app/templates/worker_form.html << 'TEMPLATE'
                                 {{ form.tags(class="form-control") }}
                             </div>
                         </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">{{ form.status.label }}</label>
+                                {{ form.status(class="form-select") }}
+                            </div>
+                        </div>
                     </div>
                 </div>
                 

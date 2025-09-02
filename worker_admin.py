@@ -238,30 +238,46 @@ def release_db_connection(conn):
 
 
 def execute_query(query: str, params: tuple = (), fetch: bool = True, commit: bool = False):
-    """Execute database query with error handling"""
+    """Execute database query with enhanced error handling"""
     conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=extras.DictCursor)
         
+        # Debug logging for important queries
+        if "INSERT" in query or "UPDATE" in query or "DELETE" in query:
+            app.logger.debug(f"Executing query: {query[:100]}... with params: {params}")
+        
         cursor.execute(query, params)
         
         if fetch:
             result = cursor.fetchall()
+            app.logger.debug(f"Query returned {len(result)} rows")
         else:
             result = cursor.rowcount
+            app.logger.debug(f"Query affected {result} rows")
         
         if commit:
             conn.commit()
+            app.logger.debug("Transaction committed successfully")
         
         cursor.close()
         return result
     
+    except psycopg2.Error as e:
+        if conn:
+            conn.rollback()
+        app.logger.error(f"PostgreSQL error: {e}")
+        app.logger.error(f"Query: {query}")
+        app.logger.error(f"Params: {params}")
+        raise Exception(f"Database error: {str(e)}")
     except Exception as e:
         if conn:
             conn.rollback()
-        app.logger.error(f"Database error: {e}")
-        raise
+        app.logger.error(f"Unexpected database error: {e}")
+        app.logger.error(f"Query: {query}")
+        app.logger.error(f"Params: {params}")
+        raise Exception(f"Database error: {str(e)}")
     finally:
         if conn:
             release_db_connection(conn)
@@ -457,7 +473,8 @@ def new_worker():
                 form.memory_limit_mb.data,
                 form.cpu_limit_cores.data,
                 form.max_runtime_minutes.data,
-                form.max_consecutive_errors.data,\n                form.status.data,
+                form.max_consecutive_errors.data,
+                form.status.data,
                 form.auto_pause_on_errors.data,
                 tags,
                 datetime.utcnow() + timedelta(minutes=schedule_minute_offset)  # Initial next_run
@@ -466,9 +483,20 @@ def new_worker():
             flash('Worker created successfully!', 'success')
             return redirect(url_for('list_workers'))
             
+        except psycopg2.IntegrityError as e:
+            if "scraping_workers_name_key" in str(e):
+                flash('A worker with this name already exists. Please choose a different name.', 'error')
+            else:
+                flash(f'Error creating worker: {str(e)}', 'error')
+            # Rollback the transaction
+            conn = get_db_connection()
+            conn.rollback()
+            release_db_connection(conn)
+            return render_template('worker_form.html', form=form, action='new')
         except Exception as e:
             app.logger.error(f"Worker creation error: {e}")
             flash(f'Error creating worker: {str(e)}', 'error')
+            return render_template('worker_form.html', form=form, action='new')
     
     return render_template('worker_form.html', form=form, action='new')
 
@@ -527,7 +555,7 @@ def edit_worker(worker_id):
                         max_retries = %s, timeout = %s, rate_limit_requests = %s, rate_limit_seconds = %s,
                         description_format = %s, linkedin_fetch_description = %s, database_id = %s,
                         table_name = %s, memory_limit_mb = %s, cpu_limit_cores = %s, max_runtime_minutes = %s,
-                        max_consecutive_errors = %s, auto_pause_on_errors = %s, tags = %s
+                        max_consecutive_errors = %s, status = %s, auto_pause_on_errors = %s, tags = %s
                     WHERE id = %s
                 """, (
                     form.name.data,
@@ -559,7 +587,8 @@ def edit_worker(worker_id):
                     form.memory_limit_mb.data,
                     form.cpu_limit_cores.data,
                     form.max_runtime_minutes.data,
-                    form.max_consecutive_errors.data,\n                form.status.data,
+                    form.max_consecutive_errors.data,
+                    form.status.data,
                     form.auto_pause_on_errors.data,
                     tags,
                     worker_id
@@ -568,9 +597,20 @@ def edit_worker(worker_id):
                 flash('Worker updated successfully!', 'success')
                 return redirect(url_for('list_workers'))
                 
+            except psycopg2.IntegrityError as e:
+                if "scraping_workers_name_key" in str(e):
+                    flash('A worker with this name already exists. Please choose a different name.', 'error')
+                else:
+                    flash(f'Error updating worker: {str(e)}', 'error')
+                # Rollback the transaction
+                conn = get_db_connection()
+                conn.rollback()
+                release_db_connection(conn)
+                return render_template('worker_form.html', form=form, action='edit', worker_id=worker_id)
             except Exception as e:
                 app.logger.error(f"Worker update error: {e}")
                 flash(f'Error updating worker: {str(e)}', 'error')
+                return render_template('worker_form.html', form=form, action='edit', worker_id=worker_id)
         
         return render_template('worker_form.html', form=form, action='edit', worker_id=worker_id)
     
@@ -724,6 +764,18 @@ def new_database():
     
     if form.validate_on_submit():
         try:
+            # Validate host and database name
+            host = form.host.data.strip()
+            database_name = form.database_name.data.strip()
+            
+            if not host:
+                flash('Host is required', 'error')
+                return render_template('database_form.html', form=form, action='new')
+            
+            if not database_name:
+                flash('Database name is required', 'error')
+                return render_template('database_form.html', form=form, action='new')
+            
             # Parse deduplication fields
             deduplication_fields = []
             if form.deduplication_fields.data:
@@ -732,7 +784,38 @@ def new_database():
             # Parse tags
             tags = []
             if form.tags.data:
-                tags = [tag.strip() for tag in form.tags.data.split(',')]
+                tags = [tag.strip() for tag in form.tags.data.split(',') if tag.strip()]
+            
+            # Validate deduplication method
+            if form.deduplication_method.data == 'composite_key' and not deduplication_fields:
+                flash('Composite key deduplication requires at least one field to be specified', 'error')
+                return render_template('database_form.html', form=form, action='new')
+            
+            # Validate batch size
+            if form.batch_size.data < 1 or form.batch_size.data > 10000:
+                flash('Batch size must be between 1 and 10000', 'error')
+                return render_template('database_form.html', form=form, action='new')
+            
+            # Validate connection pool size
+            if form.connection_pool_size.data < 1 or form.connection_pool_size.data > 50:
+                flash('Connection pool size must be between 1 and 50', 'error')
+                return render_template('database_form.html', form=form, action='new')
+            
+            # Test database connection before creating
+            try:
+                test_conn = psycopg2.connect(
+                    host=host,
+                    port=form.port.data,
+                    database=database_name,
+                    user=form.username.data,
+                    password=form.password.data,
+                    sslmode=form.ssl_mode.data,
+                    connect_timeout=10
+                )
+                test_conn.close()
+            except Exception as conn_error:
+                flash(f'Cannot connect to database: {str(conn_error)}', 'error')
+                return render_template('database_form.html', form=form, action='new')
             
             # Insert database
             execute_query("""
@@ -745,9 +828,9 @@ def new_database():
             """, (
                 form.name.data,
                 form.description.data,
-                form.host.data,
+                host,
                 form.port.data,
-                form.database_name.data,
+                database_name,
                 form.username.data,
                 form.password.data,  # In production, encrypt this
                 form.ssl_mode.data,
@@ -767,7 +850,10 @@ def new_database():
             
         except Exception as e:
             app.logger.error(f"Database creation error: {e}")
-            flash(f'Error creating database: {str(e)}', 'error')
+            if "unique constraint" in str(e).lower():
+                flash('A database with this name already exists', 'error')
+            else:
+                flash(f'Error creating database: {str(e)}', 'error')
     
     return render_template('database_form.html', form=form, action='new')
 
@@ -916,6 +1002,44 @@ def edit_database(database_id):
     form = DatabaseForm(obj=db_record)
     
     if form.validate_on_submit():
+        # Validate inputs
+        host = form.host.data.strip()
+        database_name = form.database_name.data.strip()
+        
+        if not host:
+            flash('Host is required', 'error')
+            return render_template('database_form.html', form=form, action='edit')
+        
+        if not database_name:
+            flash('Database name is required', 'error')
+            return render_template('database_form.html', form=form, action='edit')
+        
+        # Validate batch size
+        if form.batch_size.data < 1 or form.batch_size.data > 10000:
+            flash('Batch size must be between 1 and 10000', 'error')
+            return render_template('database_form.html', form=form, action='edit')
+        
+        # Validate connection pool size
+        if form.connection_pool_size.data < 1 or form.connection_pool_size.data > 50:
+            flash('Connection pool size must be between 1 and 50', 'error')
+            return render_template('database_form.html', form=form, action='edit')
+        
+        # Test database connection before updating
+        try:
+            test_conn = psycopg2.connect(
+                host=host,
+                port=form.port.data,
+                database=database_name,
+                user=form.username.data,
+                password=form.password.data,
+                sslmode=form.ssl_mode.data,
+                connect_timeout=10
+            )
+            test_conn.close()
+        except Exception as conn_error:
+            flash(f'Cannot connect to database: {str(conn_error)}', 'error')
+            return render_template('database_form.html', form=form, action='edit')
+        
         try:
             execute_query("""
                 UPDATE scraping_databases SET
@@ -946,8 +1070,14 @@ def edit_database(database_id):
             return redirect(url_for('list_databases'))
             
         except Exception as e:
-            flash(f'Error updating database: {e}', 'danger')
+            if "unique constraint" in str(e).lower():
+                flash('A database with this name already exists', 'error')
+            elif "foreign key constraint" in str(e).lower():
+                flash('Cannot update database: referenced by workers or other records', 'error')
+            else:
+                flash(f'Error updating database: {str(e)}', 'error')
             app.logger.error(f'Database update error: {e}')
+            app.logger.error(f'Database update error type: {type(e).__name__}')
     
     return render_template('database_form.html', form=form, action='edit')
 
@@ -1000,6 +1130,19 @@ def initialize_database_schema():
         test_cursor.close()
         release_db_connection(test_conn)
         
+        # Check if uuid-ossp extension is available (for gen_random_uuid)
+        print("Checking uuid-ossp extension...")
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
+            conn.commit()
+            cursor.close()
+            release_db_connection(conn)
+            print("uuid-ossp extension ensured")
+        except Exception as ext_error:
+            print(f"Warning: Could not create uuid-ossp extension: {ext_error}")
+        
         # Create tables using the schema file
         schema_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'modular_schema.sql')
         print(f"Looking for schema file at: {schema_path}")
@@ -1015,8 +1158,6 @@ def initialize_database_schema():
                     print(f"  - {file}")
             else:
                 print(f"Directory {dir_path} does not exist")
-        else:
-            print(f"Schema file found, size: {os.path.getsize(schema_path)} bytes")
             
             with open(schema_path, 'r') as f:
                 schema_sql = f.read()
