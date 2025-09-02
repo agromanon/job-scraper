@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Frontend service (using your existing my-job-scraper-fe service)
+  # Main service (Frontend/Admin Interface + Worker Engine)
   frontend:
     build:
       context: .
@@ -26,80 +26,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-  # Worker service (using your existing my-job-scraper-worker service)
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.worker
-    container_name: my-job-scraper-worker
-    restart: unless-stopped
-    environment:
-      POSTGRES_URL: ${POSTGRES_URL}
-      REDIS_URL: ${REDIS_URL}
-      WORKER_ENGINE: primary
-      PYTHONPATH: /app:/app/jobspy
-    volumes:
-      - ./logs:/app/logs
-    networks:
-      - scraping_network
-    depends_on:
-      - frontend
-
-  # Scheduler service for running workers
-  scheduler:
-    build:
-      context: .
-      dockerfile: Dockerfile.scheduler
-    container_name: job-scraper-scheduler
-    restart: unless-stopped
-    environment:
-      POSTGRES_URL: ${POSTGRES_URL}
-      REDIS_URL: ${REDIS_URL}
-      PYTHONPATH: /app:/app/jobspy
-    volumes:
-      - ./logs:/app/logs
-    networks:
-      - scraping_network
-    depends_on:
-      - frontend
-
-  # Additional worker engine for scalability
-  worker-engine-1:
-    build:
-      context: .
-      dockerfile: Dockerfile.worker
-    container_name: job-scraper-worker-1
-    restart: unless-stopped
-    environment:
-      POSTGRES_URL: ${POSTGRES_URL}
-      REDIS_URL: ${REDIS_URL}
-      WORKER_ENGINE: secondary
-      PYTHONPATH: /app:/app/jobspy
-    volumes:
-      - ./logs:/app/logs
-    networks:
-      - scraping_network
-    depends_on:
-      - frontend
-
-  worker-engine-2:
-    build:
-      context: .
-      dockerfile: Dockerfile.worker
-    container_name: job-scraper-worker-2
-    restart: unless-stopped
-    environment:
-      POSTGRES_URL: ${POSTGRES_URL}
-      REDIS_URL: ${REDIS_URL}
-      WORKER_ENGINE: secondary
-      PYTHONPATH: /app:/app/jobspy
-    volumes:
-      - ./logs:/app/logs
-    networks:
-      - scraping_network
-    depends_on:
-      - frontend
 
   # Nginx reverse proxy
   nginx:

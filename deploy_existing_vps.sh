@@ -191,22 +191,8 @@ build_images() {
     
     # Build frontend image
     log "Building frontend image..."
-    docker build -t job-scraper-frontend -f Dockerfile.frontend . || {
+    docker build -t job-scraper-frontend -f Dockerfile.force_rebuild_ultimate . || {
         error "Failed to build frontend image"
-        exit 1
-    }
-    
-    # Build worker image
-    log "Building worker image..."
-    docker build -t job-scraper-worker -f Dockerfile.worker . || {
-        error "Failed to build worker image"
-        exit 1
-    }
-    
-    # Build scheduler image
-    log "Building scheduler image..."
-    docker build -t job-scraper-scheduler -f Dockerfile.scheduler . || {
-        error "Failed to build scheduler image"
         exit 1
     }
     

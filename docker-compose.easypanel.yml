@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  # Frontend/Admin Interface
+  # Main Service (Frontend/Admin Interface + Worker Engine)
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile.frontend
+      dockerfile: Dockerfile.force_rebuild_ultimate
     container_name: my-job-scraper-fe
     restart: unless-stopped
     environment:
@@ -31,44 +31,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-  # Worker Service
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.worker
-    container_name: my-job-scraper-worker
-    restart: unless-stopped
-    environment:
-      POSTGRES_URL: ${POSTGRES_URL}
-      REDIS_URL: ${REDIS_URL}
-      WORKER_ENGINE: primary
-      PYTHONPATH: /app:/app/jobspy
-    volumes:
-      - ./logs:/app/logs
-    networks:
-      - job-scraper-network
-    depends_on:
-      - frontend
-
-  # Additional Worker for Scalability
-  worker-secondary:
-    build:
-      context: .
-      dockerfile: Dockerfile.worker
-    container_name: my-job-scraper-worker-secondary
-    restart: unless-stopped
-    environment:
-      POSTGRES_URL: ${POSTGRES_URL}
-      REDIS_URL: ${REDIS_URL}
-      WORKER_ENGINE: secondary
-      PYTHONPATH: /app:/app/jobspy
-    volumes:
-      - ./logs:/app/logs
-    networks:
-      - job-scraper-network
-    depends_on:
-      - frontend
 
 networks:
   job-scraper-network:

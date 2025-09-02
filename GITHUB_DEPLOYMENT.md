@@ -56,8 +56,7 @@ job-scraper/
 ├── worker_admin.py              # Flask admin interface
 ├── worker_manager.py            # Worker orchestration  
 ├── modular_schema.sql           # Database schema
-├── Dockerfile.frontend          # Frontend Docker build
-├── Dockerfile.worker            # Worker Docker build
+├── Dockerfile.force_rebuild_ultimate          # Main Docker build
 ├── requirements.txt           # Python dependencies
 ├── .nixpacks.toml             # EasyPanel build config
 ├── Procfile                   # Process commands
@@ -82,7 +81,7 @@ job-scraper/
    - **Service Type**: EasyPanel should auto-detect "Python"
 
 4. **Build Configuration:**
-   - **Dockerfile**: Select `Dockerfile.frontend`
+   - **Dockerfile**: Select `Dockerfile.force_rebuild_ultimate`
    - **Build Context**: `.` (root directory)
    - **Runtime**: Should auto-detect Python 3.11
 
@@ -112,7 +111,7 @@ job-scraper/
    - **Name**: `job-scraper-worker`
 
 3. **Build Configuration:**
-   - **Dockerfile**: Select `Dockerfile.worker`
+   - **Dockerfile**: Select `Dockerfile.force_rebuild_ultimate`
    - **Build Context**: `.` (root directory)
 
 4. **Environment Variables:**
@@ -142,7 +141,7 @@ curl -X POST http://your-easypanel-ip:3000/api/services \
       "branch": "main"
     },
     "build": {
-      "dockerfile": "Dockerfile.frontend"
+      "dockerfile": "Dockerfile.force_rebuild_ultimate"
     },
     "environment": {
       "POSTGRES_URL": "your-db-url",
@@ -161,7 +160,7 @@ easypanel service create \
   --source git \
   --repository https://github.com/YOUR_USERNAME/job-scraper.git \
   --branch main \
-  --dockerfile Dockerfile.frontend
+  --dockerfile Dockerfile.force_rebuild_ultimate
 
 # Set environment variables
 easypanel service env set \
@@ -269,7 +268,7 @@ If you use GitHub Actions, store secrets in repository settings:
 
 ```bash
 # Test local build first
-docker build -t test-job-scraper -f Dockerfile.frontend .
+docker build -t test-job-scraper -f Dockerfile.force_rebuild_ultimate .
 
 # Check repository accessibility
 curl -I https://github.com/YOUR_USERNAME/job-scraper.git
@@ -289,8 +288,7 @@ job-scraper/
 ├── requirements.txt          # Python dependencies
 ├── .nixpacks.toml           # Build configuration
 ├── Procfile                  # Process commands
-├── Dockerfile.frontend       # Frontend service
-├── Dockerfile.worker         # Worker service
+├── Dockerfile.force_rebuild_ultimate       # Main service
 ├── src/                     # Source code
 │   ├── worker_admin.py
 │   ├── worker_manager.py

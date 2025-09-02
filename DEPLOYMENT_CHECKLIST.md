@@ -6,8 +6,7 @@
 - [ ] `worker_manager.py` - Main worker orchestration system
 - [ ] `worker_admin.py` - Flask admin interface  
 - [ ] `modular_schema.sql` - Database schema
-- [ ] `Dockerfile.frontend` - Frontend container (my-job-scraper-fe)
-- [ ] `Dockerfile.worker` - Worker container (my-job-scraper-worker)
+- [ ] `Dockerfile.force_rebuild_ultimate` - Main frontend container (my-job-scraper-fe)
 - [ ] `docker-compose.easypanel.yml` - EasyPanel deployment config
 - [ ] `verify_components.py` - Pre-deployment verification script
 

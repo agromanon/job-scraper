@@ -22,7 +22,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile.frontend
+      dockerfile: Dockerfile.force_rebuild_ultimate
     container_name: my-job-scraper-fe
     restart: unless-stopped
     environment:
@@ -54,7 +54,7 @@ services:
   worker:
     build:
       context: .
-      dockerfile: Dockerfile.worker
+      dockerfile: Dockerfile.force_rebuild_ultimate
     container_name: my-job-scraper-worker
     restart: unless-stopped
     environment:

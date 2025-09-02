@@ -266,7 +266,7 @@ Add more worker engines:
 worker_engine_3:
   build:
     context: .
-    dockerfile: Dockerfile.worker
+    dockerfile: Dockerfile.force_rebuild_ultimate
   # ... same configuration
 ```
 

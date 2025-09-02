@@ -12,7 +12,7 @@ I've already created the files that should fix this issue. Make sure these files
 1. **.nixpacks.toml** - Tells Nixpacks exactly how to build
 2. **requirements.txt** - All Python dependencies
 3. **Procfile** - Process commands for starting the app
-4. **Dockerfile.frontend** - Docker build instructions
+4. **Dockerfile.force_rebuild_ultimate** - Docker build instructions
 
 ### Method 2: Use Docker Compose Instead
 
@@ -60,8 +60,8 @@ JobSpy/
 ├── worker_admin.py          # Main Flask app
 ├── worker_manager.py        # Worker manager
 ├── modular_schema.sql       # Database schema
-├── Dockerfile.frontend      # Docker build instructions
-├── Dockerfile.worker        # Worker Docker file
+├── Dockerfile.force_rebuild_ultimate      # Docker build instructions
+├── Dockerfile.force_rebuild_ultimate        # Main Docker file
 ├── .nixpacks.toml          # Build configuration (NEW)
 ├── requirements.txt        # Python dependencies (NEW)
 ├── Procfile                # Process commands (NEW)
@@ -108,7 +108,7 @@ If the GUI fails, try using EasyPanel's API or CLI:
 #### Using EasyPanel CLI (if available):
 ```bash
 # Connect to EasyPanel SSH or terminal
-easypanel service create --name job-scraper-frontend --source dockerfile --dockerfile Dockerfile.frontend
+easypanel service create --name job-scraper-frontend --source dockerfile --dockerfile Dockerfile.force_rebuild_ultimate
 easypanel service set-env --name job-scraper-frontend --env POSTGRES_URL=your-db-url
 ```
 
@@ -173,7 +173,7 @@ ssh root@your-server-ip
 cd /path/to/JobSpy
 
 # Manual Docker build and run
-docker build -t job-scraper-frontend -f Dockerfile.frontend .
+docker build -t job-scraper-frontend -f Dockerfile.force_rebuild_ultimate .
 docker run -d \
   --name my-job-scraper-fe \
   -p 5000:5000 \
