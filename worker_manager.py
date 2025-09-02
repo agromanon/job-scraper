@@ -394,13 +394,15 @@ class ScrapingWorker:
     
     def _batch_insert(self, cursor, db_config: DatabaseConfig, table_name: str, jobs: List[Dict]) -> int:
         """Batch insert jobs into database"""
+        # Properly quote the table name
+        quoted_table_name = f'"{table_name}"'
         # Split into batches
         for i in range(0, len(jobs), db_config.batch_size):
             batch = jobs[i:i + db_config.batch_size]
             
             columns = list(batch[0].keys())
             query = sql.SQL("INSERT INTO {} ({}) VALUES ({})").format(
-                sql.Identifier(table_name),
+                sql.SQL(quoted_table_name),  # Use quoted table name
                 sql.SQL(', ').join(map(sql.Identifier, columns)),
                 sql.SQL(', ').join([sql.Placeholder()] * len(columns))
             )
