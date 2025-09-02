@@ -235,7 +235,8 @@ class ScrapingWorker:
                 hours_old=self.config.hours_old,
                 results_wanted=self.config.results_per_run,
                 description_format=desc_format,
-                timeout=self.config.timeout
+                timeout=self.config.timeout,
+                proxies=self.config.proxies if self.config.proxies else None
             )
             
             self.metrics['jobs_found'] = len(df)
