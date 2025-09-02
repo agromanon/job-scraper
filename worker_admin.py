@@ -513,16 +513,68 @@ def edit_worker(worker_id):
             return redirect(url_for('list_workers'))
         
         worker = worker_data[0]
-        form = WorkerForm(obj=worker)
+        form = WorkerForm()
         
         # Populate database choices
         databases = execute_query("SELECT id, name FROM scraping_databases WHERE is_active = true ORDER BY name")
         form.database_id.choices = [(db['id'], db['name']) for db in databases]
         
-        # Set form data for complex fields
-        form.linkedin_company_ids.data = ','.join(map(str, worker['linkedin_company_ids'] or []))
-        form.proxies.data = '\n'.join(worker['proxies'] or [])
-        form.tags.data = ','.join(worker['tags'] or [])
+        if request.method == 'GET':
+            # Populate form with worker data for GET request
+            form.name.data = worker['name']
+            form.description.data = worker['description']
+            form.site.data = worker['site']
+            form.search_term.data = worker['search_term']
+            form.location.data = worker['location']
+            form.country.data = worker['country']
+            form.distance.data = worker['distance']
+            
+            # Handle job_type array
+            if worker['job_type']:
+                form.job_type.data = worker['job_type']
+            
+            form.is_remote.data = worker['is_remote']
+            form.easy_apply.data = worker['easy_apply']
+            
+            # Handle linkedin_company_ids array
+            if worker['linkedin_company_ids']:
+                form.linkedin_company_ids.data = ','.join(map(str, worker['linkedin_company_ids']))
+            else:
+                form.linkedin_company_ids.data = ''
+            
+            form.hours_old.data = worker['hours_old']
+            form.results_per_run.data = worker['results_per_run']
+            form.schedule_hours.data = worker['schedule_hours']
+            form.schedule_minute_offset.data = worker['schedule_minute_offset']
+            form.timezone.data = worker['timezone']
+            form.proxy_rotation_policy.data = worker['proxy_rotation_policy']
+            
+            # Handle proxies array
+            if worker['proxies']:
+                form.proxies.data = '\n'.join(worker['proxies'])
+            else:
+                form.proxies.data = ''
+            
+            form.max_retries.data = worker['max_retries']
+            form.timeout.data = worker['timeout']
+            form.rate_limit_requests.data = worker['rate_limit_requests']
+            form.rate_limit_seconds.data = worker['rate_limit_seconds']
+            form.description_format.data = worker['description_format']
+            form.linkedin_fetch_description.data = worker['linkedin_fetch_description']
+            form.database_id.data = worker['database_id']
+            form.table_name.data = worker['table_name']
+            form.memory_limit_mb.data = worker['memory_limit_mb']
+            form.cpu_limit_cores.data = float(worker['cpu_limit_cores']) if worker['cpu_limit_cores'] else 0.5
+            form.max_runtime_minutes.data = worker['max_runtime_minutes']
+            form.max_consecutive_errors.data = worker['max_consecutive_errors']
+            form.status.data = worker['status']
+            form.auto_pause_on_errors.data = worker['auto_pause_on_errors']
+            
+            # Handle tags array
+            if worker['tags']:
+                form.tags.data = ','.join(worker['tags'])
+            else:
+                form.tags.data = ''
         
         if form.validate_on_submit():
             try:
