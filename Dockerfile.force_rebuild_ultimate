@@ -975,6 +975,29 @@ RUN cat > /app/templates/worker_form.html << 'TEMPLATE'
                             </div>
                         {% endif %}
                     </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.proxy_rotation_policy.label(class="form-label fw-semibold") }}
+                        {{ form.proxy_rotation_policy(class="form-select") }}
+                        {% if form.proxy_rotation_policy.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.proxy_rotation_policy.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-12 mb-3">
+                        {{ form.proxies.label(class="form-label fw-semibold") }}
+                        {{ form.proxies(class="form-control", rows="4", placeholder="Enter one proxy per line in format: user:pass@host:port") }}
+                        <div class="form-text">Enter one proxy per line. Format: user:pass@host:port or host:port</div>
+                        {% if form.proxies.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.proxies.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
                     <div class="col-12">
                         <div class="d-flex gap-2">
                             {{ form.submit(class="btn btn-primary") }}
