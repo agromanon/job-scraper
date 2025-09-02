@@ -225,7 +225,7 @@ class ScrapingWorker:
                 site_name=[site_enum],
                 search_term=self.config.search_term or None,
                 location=self.config.location or None,
-                country=self.config.country,
+                country_indeed=self.config.country.lower() if self.config.country else 'brazil',
                 distance=self.config.distance,
                 job_type=job_types if job_types else None,
                 is_remote=self.config.is_remote,
