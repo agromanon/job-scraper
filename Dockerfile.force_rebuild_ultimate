@@ -59,7 +59,7 @@ COPY requirements.txt /app/requirements.txt
 # Install dependencies (WILL ALWAYS RUN due to cache break)
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.admin.txt && \
-    pip install --no-cache-dir psycopg2-binary requests flask-wtf
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy application code (WILL ALWAYS RUN due to cache break)
 COPY jobspy/ /app/jobspy/
