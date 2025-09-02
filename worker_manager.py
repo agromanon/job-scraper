@@ -345,6 +345,8 @@ class ScrapingWorker:
                         try:
                             result['salary_min'] = float(salary_value.replace(',', '.'))
                             result["salary_currency"] = "BRL" if "R$" in salary_text else "USD"
+                        except ValueError:
+                            pass
             
             # Flatten job type
             if 'job_type' in result and result['job_type']:
