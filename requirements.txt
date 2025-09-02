@@ -39,8 +39,8 @@ loguru==0.7.2
 prometheus-client==0.17.1
 structlog==23.1.0
 
-# JobSpy library (from GitHub)
-jobspy @ git+https://github.com/cullenwatson/JobSpy.git@main
+# JobSpy library (from PyPI)
+python-jobspy==0.31.0
 
 # Frontend assets
 bootstrap==5.3.0
