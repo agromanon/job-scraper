@@ -663,8 +663,13 @@ def delete_worker(worker_id):
 def execute_worker(worker_id):
     """Manually execute worker"""
     try:
-        # Import here to avoid circular imports
-        from worker_manager import WorkerManager
+        # Import here to avoid circular imports and handle import errors
+        try:
+            from worker_manager import WorkerManager, WorkerConfig
+        except ImportError as e:
+            app.logger.error(f"Failed to import WorkerManager: {e}")
+            flash(f'Error importing worker components: {str(e)}', 'error')
+            return redirect(url_for('list_workers'))
         
         # Get worker configuration
         worker_data = execute_query("SELECT * FROM scraping_workers WHERE id = %s", (worker_id,), fetch=True)
@@ -675,7 +680,6 @@ def execute_worker(worker_id):
         worker_record = worker_data[0]
         
         # Create WorkerConfig object
-        from worker_manager import WorkerConfig
         config = WorkerConfig(
             id=worker_record['id'],
             name=worker_record['name'],
@@ -719,6 +723,9 @@ def execute_worker(worker_id):
                 manager.run_worker(config)
             except Exception as e:
                 app.logger.error(f"Worker execution error: {e}")
+                # Log the full traceback for debugging
+                import traceback
+                app.logger.error(f"Worker execution error traceback: {traceback.format_exc()}")
         
         thread = threading.Thread(target=run_worker)
         thread.daemon = True
@@ -729,6 +736,9 @@ def execute_worker(worker_id):
         
     except Exception as e:
         app.logger.error(f"Worker execution error: {e}")
+        # Log the full traceback for debugging
+        import traceback
+        app.logger.error(f"Worker execution error traceback: {traceback.format_exc()}")
         flash(f'Error executing worker: {str(e)}', 'error')
         return redirect(url_for('list_workers'))
 
