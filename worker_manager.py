@@ -436,13 +436,15 @@ class WorkerManager:
         self.executor = ThreadPoolExecutor(max_workers=20)
         self.shutdown_flag = threading.Event()
         
-        # Initialize logging
-        logging.basicConfig(level=logging.INFO, 
+        # Set up logging
+        logging.basicConfig(level=logging.INFO if not os.getenv('DEBUG', False) else logging.DEBUG,
                            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         
-        # Register signal handlers
-        signal.signal(signal.SIGINT, self._signal_handler)
-        signal.signal(signal.SIGTERM, self._signal_handler)
+        # Register signal handlers only if we're in the main thread
+        import threading
+        if threading.current_thread() is threading.main_thread():
+            signal.signal(signal.SIGINT, self._signal_handler)
+            signal.signal(signal.SIGTERM, self._signal_handler)
         
         logger.info("Worker Manager initialized")
     
