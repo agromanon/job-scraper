@@ -12,6 +12,7 @@ import signal
 import sys
 import os
 import uuid
+import traceback
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
@@ -326,8 +327,10 @@ class ScrapingWorker:
     
     def _ensure_table_exists(self, cursor, db_config: DatabaseConfig, table_name: str):
         """Ensure target table exists with proper schema"""
+        # Properly quote the table name to handle special characters
+        quoted_table_name = f'"{table_name}"'
         cursor.execute(f"""
-            CREATE TABLE IF NOT EXISTS {table_name} (
+            CREATE TABLE IF NOT EXISTS {quoted_table_name} (
                 id SERIAL PRIMARY KEY,
                 worker_id INTEGER,
                 worker_name VARCHAR(100),
@@ -357,8 +360,10 @@ class ScrapingWorker:
     
     def _is_duplicate(self, cursor, db_config: DatabaseConfig, table_name: str, result: Dict) -> bool:
         """Check if job already exists"""
+        # Properly quote the table name
+        quoted_table_name = f'"{table_name}"'
         if db_config.deduplication_method == 'unique_id':
-            cursor.execute(f"SELECT 1 FROM {table_name} WHERE job_id = %s", (result.get('id'),))
+            cursor.execute(f"SELECT 1 FROM {quoted_table_name} WHERE job_id = %s", (result.get('id'),))
         elif db_config.deduplication_method == 'composite_key':
             conditions = []
             params = []
@@ -367,7 +372,7 @@ class ScrapingWorker:
                     conditions.append(f"{field} = %s")
                     params.append(result[field])
             if conditions:
-                cursor.execute(f"SELECT 1 FROM {table_name} WHERE {' AND '.join(conditions)}", params)
+                cursor.execute(f"SELECT 1 FROM {quoted_table_name} WHERE {' AND '.join(conditions)}", params)
             else:
                 return False
         else:
@@ -377,8 +382,10 @@ class ScrapingWorker:
     
     def _should_update_duplicate(self, cursor, db_config: DatabaseConfig, table_name: str, result: Dict) -> bool:
         """Determine if duplicate should be updated"""
+        # Properly quote the table name
+        quoted_table_name = f'"{table_name}"'
         # Simple logic: update if original is older than 7 days
-        cursor.execute(f"SELECT created_at FROM {table_name} WHERE job_url = %s", (result.get('job_url'),))
+        cursor.execute(f"SELECT created_at FROM {quoted_table_name} WHERE job_url = %s", (result.get('job_url'),))
         row = cursor.fetchone()
         if row and row[0]:
             created_at = row[0]
@@ -408,6 +415,8 @@ class ScrapingWorker:
     
     def _batch_update(self, cursor, db_config: DatabaseConfig, table_name: str, jobs: List[Dict]) -> int:
         """Batch update existing jobs"""
+        # Properly quote the table name
+        quoted_table_name = f'"{table_name}"'
         updated_count = 0
         for job in jobs:
             set_clauses = []
@@ -419,7 +428,7 @@ class ScrapingWorker:
                     params.append(value)
             
             if set_clauses:
-                query = f"UPDATE {table_name} SET {', '.join(set_clauses)}, updated_at = CURRENT_TIMESTAMP WHERE job_url = %s"
+                query = f"UPDATE {quoted_table_name} SET {', '.join(set_clauses)}, updated_at = CURRENT_TIMESTAMP WHERE job_url = %s"
                 params.append(job.get('job_url'))
                 
                 cursor.execute(query, params)
