@@ -394,26 +394,29 @@ class ScrapingWorker:
     
     def _batch_insert(self, cursor, db_config: DatabaseConfig, table_name: str, jobs: List[Dict]) -> int:
         """Batch insert jobs into database"""
-        # Properly quote the table name
-        quoted_table_name = f'"{table_name}"'
+        inserted_count = 0
         # Split into batches
         for i in range(0, len(jobs), db_config.batch_size):
             batch = jobs[i:i + db_config.batch_size]
             
             columns = list(batch[0].keys())
-            query = sql.SQL("INSERT INTO {} ({}) VALUES ({})").format(
-                sql.SQL(quoted_table_name),  # Use quoted table name
-                sql.SQL(', ').join(map(sql.Identifier, columns)),
-                sql.SQL(', ').join([sql.Placeholder()] * len(columns))
-            )
-            
-            values = []
+            # Create individual INSERT statements for each job in the batch
             for job in batch:
-                values.append([job.get(col) for col in columns])
-            
-            extras.execute_values(cursor, query, values)
+                # Build the column names and placeholders
+                col_names = ', '.join(columns)
+                placeholders = ', '.join(['%s'] * len(columns))
+                
+                # Properly quote the table name
+                quoted_table_name = f'"{table_name}"'
+                query = f"INSERT INTO {quoted_table_name} ({col_names}) VALUES ({placeholders})"
+                
+                # Extract values in the same order as columns
+                values = [job.get(col) for col in columns]
+                
+                cursor.execute(query, values)
+                inserted_count += 1
         
-        return len(jobs)
+        return inserted_count
     
     def _batch_update(self, cursor, db_config: DatabaseConfig, table_name: str, jobs: List[Dict]) -> int:
         """Batch update existing jobs"""
