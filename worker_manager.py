@@ -278,20 +278,36 @@ class ScrapingWorker:
                     import re
                     # Look for company name patterns in description
                     company_patterns = [
-                        r'\*\*([^\*]{2,100})\*\*',  # Bold company name at start like "**Company Name**"
-                        r'Empresa:\s*([^\n\r.]{2,100})',
-                        r'Organização:\s*([^\n\r.]{2,100})',
-                        r'Companhia:\s*([^\n\r.]{2,100})',
-                        r'Contratante:\s*([^\n\r.]{2,100})'
+                        r'\*\*([^\*]{3,150})\*\*',  # Bold company name at start like "**Company Name**"
+                        r'Empresa:\s*([^\n\r.]{3,100})',
+                        r'Organização:\s*([^\n\r.]{3,100})',
+                        r'Companhia:\s*([^\n\r.]{3,100})',
+                        r'Contratante:\s*([^\n\r.]{3,100})',
+                        r'(?:Empresa|Organização|Companhia):\s*([A-Z][^\n\r.]{3,100})'  # More general pattern
                     ]
                     for pattern in company_patterns:
-                        company_match = re.search(pattern, result['description'], re.IGNORECASE)
+                        company_match = re.search(pattern, result['description'], re.IGNORECASE | re.MULTILINE)
                         if company_match:
                             company_name = company_match.group(1).strip()
                             # Filter out common job board names and generic terms
-                            if not any(job_board in company_name.lower() for job_board in ['divulga vagas', 'indeed', 'linkedin', 'glassdoor', 'cargo', 'função']):
-                                result['company_name'] = company_name
-                                break
+                            excluded_terms = ['divulga vagas', 'indeed', 'linkedin', 'glassdoor', 'cargo', 'função', 'vaga', 'oportunidade', 'descrição']
+                            if not any(excluded_term in company_name.lower() for excluded_term in excluded_terms):
+                                # Clean up the company name
+                                company_name = re.sub(r'[\*\n\r]+', '', company_name).strip()
+                                if len(company_name) > 2:  # Make sure it's a reasonable length
+                                    result['company_name'] = company_name
+                                    break
+                    
+                    # If still no company name, try to extract from email domain as last resort
+                    if ('company_name' not in result or result['company_name'] is None) and 'emails' in result and result['emails']:
+                        if isinstance(result['emails'], list) and len(result['emails']) > 0:
+                            email = result['emails'][0]
+                            if '@' in email:
+                                domain = email.split('@')[1]
+                                # Remove common email domain parts
+                                company_name = domain.split('.')[0]
+                                if not any(excluded in company_name.lower() for excluded in ['gmail', 'hotmail', 'yahoo', 'outlook']):
+                                    result['company_name'] = company_name.title()
             
             if 'company_url' not in result or result['company_url'] is None:
                 if 'company' in result and result['company'] is not None and not (isinstance(result['company'], float) and math.isnan(result['company'])):
