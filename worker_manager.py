@@ -422,8 +422,17 @@ class ScrapingWorker:
                 if not filtered_job:
                     continue
                     
+                # Process special data types
+                processed_job = {}
+                for key, value in filtered_job.items():
+                    if key == 'job_type' and isinstance(value, list):
+                        # Convert array to JSON for JSONB column
+                        processed_job[key] = json.dumps(value)
+                    else:
+                        processed_job[key] = value
+                
                 # Build the column names and placeholders
-                columns = list(filtered_job.keys())
+                columns = list(processed_job.keys())
                 col_names = ', '.join(columns)
                 placeholders = ', '.join(['%s'] * len(columns))
                 
@@ -432,7 +441,7 @@ class ScrapingWorker:
                 query = f"INSERT INTO {quoted_table_name} ({col_names}) VALUES ({placeholders})"
                 
                 # Extract values in the same order as columns
-                values = [filtered_job.get(col) for col in columns]
+                values = [processed_job.get(col) for col in columns]
                 
                 cursor.execute(query, values)
                 inserted_count += 1
