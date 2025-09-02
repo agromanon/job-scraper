@@ -255,6 +255,11 @@ class ScrapingWorker:
             result['scraped_at'] = datetime.utcnow()
             result['source_site'] = self.config.site
             
+            # Handle field name mapping
+            # If jobspy returns 'site', map it to 'source_site' to avoid conflict
+            if 'site' in result and 'source_site' not in result:
+                result['source_site'] = result.pop('site')
+            
             # Handle compensation
             if 'compensation' in result and result['compensation']:
                 comp = result['compensation']
@@ -266,9 +271,9 @@ class ScrapingWorker:
             # Handle location
             if 'location' in result and result['location']:
                 location = result['location']
-                result['city'] = getattr(location, 'city', None)
-                result['state'] = getattr(location, 'state', None)
-                result['country'] = getattr(location, 'country', None)
+                result['location_city'] = getattr(location, 'city', None)
+                result['location_state'] = getattr(location, 'state', None)
+                result['location_country'] = getattr(location, 'country', None)
             
             # Flatten job type
             if 'job_type' in result and result['job_type']:
@@ -394,15 +399,31 @@ class ScrapingWorker:
     
     def _batch_insert(self, cursor, db_config: DatabaseConfig, table_name: str, jobs: List[Dict]) -> int:
         """Batch insert jobs into database"""
+        if not jobs:
+            return 0
+            
         inserted_count = 0
+        # Define the expected database columns
+        expected_columns = {
+            'worker_id', 'worker_name', 'source_site', 'scraped_at', 'job_id', 'job_url', 
+            'title', 'company_name', 'company_url', 'description', 'location_city', 
+            'location_state', 'location_country', 'is_remote', 'job_type', 'salary_min', 
+            'salary_max', 'salary_currency', 'salary_interval', 'date_posted', 'is_active'
+        }
+        
         # Split into batches
         for i in range(0, len(jobs), db_config.batch_size):
             batch = jobs[i:i + db_config.batch_size]
             
-            columns = list(batch[0].keys())
-            # Create individual INSERT statements for each job in the batch
             for job in batch:
+                # Filter job data to only include expected columns
+                filtered_job = {k: v for k, v in job.items() if k in expected_columns}
+                
+                if not filtered_job:
+                    continue
+                    
                 # Build the column names and placeholders
+                columns = list(filtered_job.keys())
                 col_names = ', '.join(columns)
                 placeholders = ', '.join(['%s'] * len(columns))
                 
@@ -411,7 +432,7 @@ class ScrapingWorker:
                 query = f"INSERT INTO {quoted_table_name} ({col_names}) VALUES ({placeholders})"
                 
                 # Extract values in the same order as columns
-                values = [job.get(col) for col in columns]
+                values = [filtered_job.get(col) for col in columns]
                 
                 cursor.execute(query, values)
                 inserted_count += 1
