@@ -441,8 +441,8 @@ def new_worker():
                     max_retries, timeout, rate_limit_requests, rate_limit_seconds, description_format,
                     linkedin_fetch_description, database_id, table_name, memory_limit_mb,
                     cpu_limit_cores, max_runtime_minutes, max_consecutive_errors, status, auto_pause_on_errors, tags,
-                    next_run
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    next_run, last_run, last_success, last_error, consecutive_errors, created_at, updated_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT, DEFAULT)
             """, (
                 form.name.data,
                 form.description.data,
