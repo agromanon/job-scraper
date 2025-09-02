@@ -1347,9 +1347,6 @@ try:
 except Exception as e:
     print(f"Startup schema initialization failed (will retry on first request): {e}")
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
-
 @app.route('/databases/<int:database_id>/delete')
 @login_required
 def delete_database(database_id):
@@ -1363,5 +1360,8 @@ def delete_database(database_id):
         app.logger.error(f"Database deletion error: {e}")
         flash(f'Error deleting database: {str(e)}', 'error')
         return redirect(url_for('list_databases'))
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
 
 
