@@ -268,7 +268,7 @@ class ScrapingWorker:
             
             # Handle company information
             if 'company_name' not in result or result['company_name'] is None:
-                if 'company' in result and result['company']:
+                if 'company' in result and result['company'] is not None and not (isinstance(result['company'], float) and math.isnan(result['company'])):
                     if isinstance(result['company'], dict) and 'name' in result['company']:
                         result['company_name'] = result['company']['name']
                     elif hasattr(result['company'], 'name'):
@@ -278,6 +278,7 @@ class ScrapingWorker:
                     import re
                     # Look for company name patterns in description
                     company_patterns = [
+                        r'\*\*([^\*]{2,100})\*\*',  # Bold company name at start like "**Company Name**"
                         r'Empresa:\s*([^\n\r.]{2,100})',
                         r'Organização:\s*([^\n\r.]{2,100})',
                         r'Companhia:\s*([^\n\r.]{2,100})',
@@ -287,13 +288,13 @@ class ScrapingWorker:
                         company_match = re.search(pattern, result['description'], re.IGNORECASE)
                         if company_match:
                             company_name = company_match.group(1).strip()
-                            # Filter out common job board names
-                            if not any(job_board in company_name.lower() for job_board in ['divulga vagas', 'indeed', 'linkedin', 'glassdoor']):
+                            # Filter out common job board names and generic terms
+                            if not any(job_board in company_name.lower() for job_board in ['divulga vagas', 'indeed', 'linkedin', 'glassdoor', 'cargo', 'função']):
                                 result['company_name'] = company_name
                                 break
             
             if 'company_url' not in result or result['company_url'] is None:
-                if 'company' in result and result['company']:
+                if 'company' in result and result['company'] is not None and not (isinstance(result['company'], float) and math.isnan(result['company'])):
                     if isinstance(result['company'], dict) and 'url' in result['company']:
                         result['company_url'] = result['company']['url']
                     elif hasattr(result['company'], 'url'):
@@ -302,23 +303,33 @@ class ScrapingWorker:
             # Handle location information
             if ('location_city' not in result or result['location_city'] is None or
                 'location_state' not in result or result['location_state'] is None):
-                if 'location' in result and result['location']:
-                    location = result['location']
+                if 'location' in result and result['location'] is not None and not (isinstance(result['location'], float) and math.isnan(result['location'])):
+                    location_data = result['location']
+                    # Handle location as string from JobSpy (e.g., "Cuiabá, MT, BR")
+                    if isinstance(location_data, str):
+                        # Parse "City, State, Country" format
+                        parts = [part.strip() for part in location_data.split(',')]
+                        if len(parts) >= 1:
+                            result['location_city'] = parts[0]
+                        if len(parts) >= 2:
+                            result['location_state'] = parts[1]
+                        if len(parts) >= 3:
+                            result['location_country'] = parts[2]
                     # Handle Location object from JobSpy
-                    if hasattr(location, 'city'):
-                        result['location_city'] = location.city
-                    elif isinstance(location, dict) and 'city' in location:
-                        result['location_city'] = location['city']
+                    elif hasattr(location_data, 'city'):
+                        result['location_city'] = location_data.city
+                    elif isinstance(location_data, dict) and 'city' in location_data:
+                        result['location_city'] = location_data['city']
                     
-                    if hasattr(location, 'state'):
-                        result['location_state'] = location.state
-                    elif isinstance(location, dict) and 'state' in location:
-                        result['location_state'] = location['state']
+                    if hasattr(location_data, 'state'):
+                        result['location_state'] = location_data.state
+                    elif isinstance(location_data, dict) and 'state' in location_data:
+                        result['location_state'] = location_data['state']
                     
-                    if hasattr(location, 'country'):
-                        result['location_country'] = location.country
-                    elif isinstance(location, dict) and 'country' in location:
-                        result['location_country'] = location['country']
+                    if hasattr(location_data, 'country'):
+                        result['location_country'] = location_data.country
+                    elif isinstance(location_data, dict) and 'country' in location_data:
+                        result['location_country'] = location_data['country']
                 # Fallback: Try to extract location from description
                 elif 'description' in result and result['description']:
                     import re
