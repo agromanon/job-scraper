@@ -839,6 +839,20 @@ RUN cat > /app/templates/worker_form.html << 'TEMPLATE'
                     </div>
                 </div>
                 
+                <!-- LinkedIn Settings -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="fw-bold text-primary mb-3">LinkedIn Settings</h5>
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <div class="form-check">
+                            {{ form.linkedin_fetch_description(class="form-check-input") }}
+                            {{ form.linkedin_fetch_description.label(class="form-check-label fw-semibold") }}
+                            <div class="form-text">Enable detailed job descriptions for LinkedIn jobs (recommended for better data quality)</div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Database Configuration -->
                 <div class="row mb-4">
                     <div class="col-12">
