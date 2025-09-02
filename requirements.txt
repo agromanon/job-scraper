@@ -43,4 +43,4 @@ structlog==23.1.0
 python-jobspy==1.1.82
 
 # Frontend assets
-bootstrap==5.3.0
+# bootstrap==5.3.0 (removed as it's not a Python package)
