@@ -837,6 +837,18 @@ RUN cat > /app/templates/worker_form.html << 'TEMPLATE'
                             </div>
                         {% endif %}
                     </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.results_per_run.label(class="form-label fw-semibold") }}
+                        {{ form.results_per_run(class="form-control") }}
+                        <div class="form-text">Number of job results to retrieve per run (default: 50)</div>
+                        {% if form.results_per_run.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.results_per_run.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
                 
                 <!-- LinkedIn Settings -->
