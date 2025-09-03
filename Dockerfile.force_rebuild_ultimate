@@ -1003,7 +1003,11 @@ RUN cat > /app/templates/worker_form.html << 'TEMPLATE'
                     <div class="col-12 mb-3">
                         {{ form.proxies.label(class="form-label fw-semibold") }}
                         {{ form.proxies(class="form-control", rows="4", placeholder="Enter one proxy per line in format: user:pass@host:port") }}
-                        <div class="form-text">Enter one proxy per line. Format: user:pass@host:port or host:port</div>
+                        <div class="form-text">
+                            Enter one proxy per line. Format: user:pass@host:port or host:port<br>
+                            <strong>Webshare.io Integration:</strong> Set WEBSHARE_USERNAME and WEBSHARE_PASSWORD environment variables for automatic proxy management<br>
+                            <strong>Example Webshare URL:</strong> http://username:password@p.webshare.io:80/
+                        </div>
                         {% if form.proxies.errors %}
                             <div class="text-danger small mt-1">
                                 {% for error in form.proxies.errors %}
