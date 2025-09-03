@@ -172,6 +172,7 @@ class ScrapingWorker:
         if _proxy_manager_available:
             webshare_username = os.getenv('WEBSHARE_USERNAME')
             webshare_password = os.getenv('WEBSHARE_PASSWORD')
+            logger.info(f"Webshare credentials from env: username={webshare_username}, password={'*' * len(webshare_password) if webshare_password else None}")
             if webshare_username and webshare_password:
                 try:
                     initialize_webshare_proxy(webshare_username, webshare_password)
