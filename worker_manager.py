@@ -383,12 +383,13 @@ class ScrapingWorker:
                 import re
                 # Look for salary patterns in description
                 salary_patterns = [
+                    r'R\$\s*([\d\.,]+)\s*(?:\-|a|até)\s*R\$\s*([\d\.,]+)',  # Range format like "R$ 3.000 - R$ 7.000"
+                    r'R\$\s*([\d\.,]+)',  # Simple R$ format like "R$ 3.676,35"
                     r'[R$]?\s*([\d\.,]+)\s*(?:a\s+)?(?:por\s+)?(?:mês|mes)',
                     r'(?:salário|salario|bolsa)\s*(?:fixo)?\s*[R$]?\s*([\d\.,]+)',
-                    r'[R$]\s*([\d\.,]+)',
                     r'(?:remuneração|remuneracao)\s*[R$]?\s*([\d\.,]+)',
-                    r'R\$\s*([\d\.,]+)\s*(?:\-|a)\s*R\$\s*([\d\.,]+)',  # Range format like "R$ 5.000 - R$ 7.000"
-                    r'R\$\s*([\d\.,]+)'  # Simple R$ format
+                    r'R\$\s*([\d\.,]+)\s*/mês',  # Monthly salary format
+                    r'salário.*?mínimo.*?R\$\s*([\d\.,]+).*?máximo.*?R\$\s*([\d\.,]+)',  # Min/max format
                 ]
                 for pattern in salary_patterns:
                     salary_match = re.search(pattern, result['description'], re.IGNORECASE)
@@ -398,8 +399,11 @@ class ScrapingWorker:
                             min_salary = salary_match.group(1).strip()
                             max_salary = salary_match.group(2).strip()
                             try:
-                                result['salary_min'] = float(min_salary.replace('.', '').replace(',', '.'))
-                                result['salary_max'] = float(max_salary.replace('.', '').replace(',', '.'))
+                                # Handle Brazilian number format (period = thousands separator, comma = decimal)
+                                min_val = float(min_salary.replace('.', '').replace(',', '.'))
+                                max_val = float(max_salary.replace('.', '').replace(',', '.'))
+                                result['salary_min'] = min_val
+                                result['salary_max'] = max_val
                                 result['salary_currency'] = 'BRL'
                                 result['salary_interval'] = 'monthly'
                                 break
@@ -408,16 +412,15 @@ class ScrapingWorker:
                         else:
                             # Handle single salary
                             salary_text = salary_match.group(1).strip()
-                            # Extract numeric value
-                            salary_value = re.sub(r'[^\d.,]', '', salary_text)
-                            if salary_value:
-                                try:
-                                    result['salary_min'] = float(salary_value.replace('.', '').replace(',', '.'))
-                                    result['salary_currency'] = 'BRL'
-                                    result['salary_interval'] = 'monthly'
-                                    break
-                                except ValueError:
-                                    pass
+                            try:
+                                # Handle Brazilian number format (period = thousands separator, comma = decimal)
+                                salary_value = float(salary_text.replace('.', '').replace(',', '.'))
+                                result['salary_min'] = salary_value
+                                result['salary_currency'] = 'BRL'
+                                result['salary_interval'] = 'monthly'
+                                break
+                            except ValueError:
+                                pass
             
             # Flatten job type
             if 'job_type' in result and result['job_type']:
