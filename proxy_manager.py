@@ -35,20 +35,25 @@ class ProxyManager:
         self.last_refresh: datetime = datetime.min
         self.refresh_interval: int = 300  # 5 minutes
     
-    def add_webshare_config(self, username: str, password: str, 
-                          proxy_host: str = "p.webshare.io", proxy_port: int = 80):
+    def add_webshare_config(self, username: str = None, password: str = None, 
+                      api_key: str = None,
+                      proxy_host: str = "p.webshare.io", proxy_port: int = 80):
         """Add Webshare.io proxy configuration"""
         config = ProxyConfig(
             service='webshare',
             username=username,
             password=password,
+            api_key=api_key,
             proxy_host=proxy_host,
             proxy_port=proxy_port,
             rotation_enabled=True,
             health_check_enabled=True
         )
         self.proxy_configs['webshare'] = config
-        logger.info(f"Added Webshare.io proxy config: {username}@{proxy_host}:{proxy_port}")
+        if api_key:
+            logger.info(f"Added Webshare.io proxy config with API key: {proxy_host}:{proxy_port}")
+        else:
+            logger.info(f"Added Webshare.io proxy config: {username}@{proxy_host}:{proxy_port}")
     
     def get_rotating_proxy(self) -> Optional[str]:
         """Get a rotating proxy URL for Webshare.io"""
@@ -56,12 +61,18 @@ class ProxyManager:
             return None
             
         config = self.proxy_configs['webshare']
-        if not config.username or not config.password:
-            return None
+        
+        # Handle API key authentication (preferred)
+        if config.api_key:
+            proxy_url = f"http://{config.api_key}:@{config.proxy_host}:{config.proxy_port}/"
+            return proxy_url
             
-        # Webshare rotating proxy format
-        proxy_url = f"http://{config.username}:{config.password}@{config.proxy_host}:{config.proxy_port}/"
-        return proxy_url
+        # Handle username/password authentication (fallback)
+        if config.username and config.password:
+            proxy_url = f"http://{config.username}:{config.password}@{config.proxy_host}:{config.proxy_port}/"
+            return proxy_url
+            
+        return None
     
     def get_proxy_dict(self) -> Optional[Dict[str, str]]:
         """Get proxy dictionary for requests library"""

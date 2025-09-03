@@ -170,15 +170,24 @@ class ScrapingWorker:
         
         # Initialize Webshare proxy if credentials are provided in environment
         if _proxy_manager_available:
+            webshare_api_key = os.getenv('WEBSHARE_API_KEY')
             webshare_username = os.getenv('WEBSHARE_USERNAME')
             webshare_password = os.getenv('WEBSHARE_PASSWORD')
-            logger.info(f"Webshare credentials from env: username={webshare_username}, password={'*' * len(webshare_password) if webshare_password else None}")
-            if webshare_username and webshare_password:
+            
+            logger.info(f"Webshare credentials from env: api_key={'*' * len(webshare_api_key) if webshare_api_key else None}, username={webshare_username}, password={'*' * len(webshare_password) if webshare_password else None}")
+            
+            if webshare_api_key:
+                try:
+                    initialize_webshare_proxy(api_key=webshare_api_key)
+                    logger.info("Initialized Webshare.io proxy service with API key")
+                except Exception as e:
+                    logger.warning(f"Failed to initialize Webshare.io proxy with API key: {e}")
+            elif webshare_username and webshare_password:
                 try:
                     initialize_webshare_proxy(webshare_username, webshare_password)
-                    logger.info("Initialized Webshare.io proxy service")
+                    logger.info("Initialized Webshare.io proxy service with username/password")
                 except Exception as e:
-                    logger.warning(f"Failed to initialize Webshare.io proxy: {e}")
+                    logger.warning(f"Failed to initialize Webshare.io proxy with username/password: {e}")
     
     def execute(self) -> Dict[str, Any]:
         """Execute the scraping job"""
