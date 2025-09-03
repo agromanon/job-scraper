@@ -33,7 +33,14 @@ except ImportError as e:
     sys.exit(1)
 
 # Import our modules
-from proxy_manager import proxy_manager, initialize_webshare_proxy
+# Import proxy manager if available
+try:
+    from proxy_manager import proxy_manager, initialize_webshare_proxy
+    _proxy_manager_available = True
+except ImportError:
+    _proxy_manager_available = False
+    proxy_manager = None
+    initialize_webshare_proxy = None
 import psycopg2
 from psycopg2 import sql, extras
 from psycopg2.pool import ThreadedConnectionPool
@@ -162,11 +169,15 @@ class ScrapingWorker:
         }
         
         # Initialize Webshare proxy if credentials are provided in environment
-        webshare_username = os.getenv('WEBSHARE_USERNAME')
-        webshare_password = os.getenv('WEBSHARE_PASSWORD')
-        if webshare_username and webshare_password:
-            initialize_webshare_proxy(webshare_username, webshare_password)
-            logger.info("Initialized Webshare.io proxy service")
+        if _proxy_manager_available:
+            webshare_username = os.getenv('WEBSHARE_USERNAME')
+            webshare_password = os.getenv('WEBSHARE_PASSWORD')
+            if webshare_username and webshare_password:
+                try:
+                    initialize_webshare_proxy(webshare_username, webshare_password)
+                    logger.info("Initialized Webshare.io proxy service")
+                except Exception as e:
+                    logger.warning(f"Failed to initialize Webshare.io proxy: {e}")
     
     def execute(self) -> Dict[str, Any]:
         """Execute the scraping job"""
@@ -273,10 +284,14 @@ class ScrapingWorker:
     def _get_proxies(self):
         """Get proxies for scraping - prioritize Webshare.io, fallback to configured proxies"""
         # First try Webshare.io rotating proxy
-        webshare_proxies = proxy_manager.get_proxy_dict()
-        if webshare_proxies:
-            logger.info("Using Webshare.io rotating proxy")
-            return webshare_proxies
+        if _proxy_manager_available and proxy_manager:
+            try:
+                webshare_proxies = proxy_manager.get_proxy_dict()
+                if webshare_proxies:
+                    logger.info("Using Webshare.io rotating proxy")
+                    return webshare_proxies
+            except Exception as e:
+                logger.warning(f"Failed to get Webshare.io proxies: {e}")
         
         # Fallback to configured proxies
         if self.config.proxies:
@@ -985,30 +1000,6 @@ class WorkerManager:
         
         logger.info("Scheduler stopped")
     
-    def _get_proxies(self):
-        """Get proxies for scraping - prioritize Webshare.io, fallback to configured proxies"""
-        # First try Webshare.io rotating proxy
-        webshare_proxies = proxy_manager.get_proxy_dict()
-        if webshare_proxies:
-            logger.info("Using Webshare.io rotating proxy")
-            return webshare_proxies
-        
-        # Fallback to configured proxies
-        if self.config.proxies:
-            # Convert list of proxy strings to format expected by JobSpy
-            if isinstance(self.config.proxies, list) and len(self.config.proxies) > 0:
-                logger.info(f"Using configured proxies: {len(self.config.proxies)} proxies available")
-                return self.config.proxies
-            elif isinstance(self.config.proxies, str):
-                logger.info("Using single configured proxy")
-                return [self.config.proxies]
-        
-        # No proxies configured
-        logger.info("No proxies configured, running without proxies")
-        return None
-
-
-if __name__ == "__main__":
     # Example usage
     import os
     import uuid
