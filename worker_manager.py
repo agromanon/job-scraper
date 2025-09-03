@@ -1000,14 +1000,16 @@ class WorkerManager:
         
         logger.info("Scheduler stopped")
     
+
+if __name__ == "__main__":
     # Example usage
     import os
     import uuid
-    
+
     postgres_url = os.getenv('POSTGRES_URL', 'postgresql://postgres:password@localhost:5432/job_scraping')
-    
+
     manager = WorkerManager(postgres_url)
-    
+
     try:
         manager.run_scheduler()
     except KeyboardInterrupt:
