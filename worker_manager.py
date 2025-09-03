@@ -18,6 +18,22 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# Add the current directory to Python path for imports
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# Import JobSpy and related modules
+try:
+    from jobspy import scrape_jobs
+    from jobspy.model import JobType, DescriptionFormat, Site
+    logger = logging.getLogger(__name__)
+except ImportError as e:
+    print(f"Failed to import JobSpy: {e}")
+    print("Make sure JobSpy is installed: pip install python-jobspy")
+    sys.exit(1)
+
+# Import our modules
+from proxy_manager import proxy_manager, initialize_webshare_proxy
 import psycopg2
 from psycopg2 import sql, extras
 from psycopg2.pool import ThreadedConnectionPool
@@ -134,19 +150,23 @@ class ScrapingWorker:
     def __init__(self, config: WorkerConfig, db_manager: WorkerDatabaseManager):
         self.config = config
         self.db_manager = db_manager
-        self.execution_id = None
-        self.start_time = None
+        self.execution_id = str(uuid.uuid4())
+        self.start_time = datetime.utcnow()
         self.metrics = {
             'jobs_found': 0,
             'jobs_inserted': 0,
             'jobs_updated': 0,
             'jobs_skipped': 0,
             'duplicates_found': 0,
-            'network_requests': 0,
-            'network_errors': 0,
-            'proxy_errors': 0,
             'duration_seconds': 0
         }
+        
+        # Initialize Webshare proxy if credentials are provided in environment
+        webshare_username = os.getenv('WEBSHARE_USERNAME')
+        webshare_password = os.getenv('WEBSHARE_PASSWORD')
+        if webshare_username and webshare_password:
+            initialize_webshare_proxy(webshare_username, webshare_password)
+            logger.info("Initialized Webshare.io proxy service")
     
     def execute(self) -> Dict[str, Any]:
         """Execute the scraping job"""
@@ -236,7 +256,7 @@ class ScrapingWorker:
                 results_wanted=self.config.results_per_run,
                 description_format=desc_format,
                 timeout=self.config.timeout,
-                proxies=self.config.proxies if self.config.proxies else None
+                proxies=self._get_proxies()
             )
             
             self.metrics['jobs_found'] = len(df)
@@ -249,6 +269,28 @@ class ScrapingWorker:
         except Exception as e:
             logger.error(f"Scraping failed for worker {self.config.name}: {e}")
             raise
+    
+    def _get_proxies(self):
+        """Get proxies for scraping - prioritize Webshare.io, fallback to configured proxies"""
+        # First try Webshare.io rotating proxy
+        webshare_proxies = proxy_manager.get_proxy_dict()
+        if webshare_proxies:
+            logger.info("Using Webshare.io rotating proxy")
+            return webshare_proxies
+        
+        # Fallback to configured proxies
+        if self.config.proxies:
+            # Convert list of proxy strings to format expected by JobSpy
+            if isinstance(self.config.proxies, list) and len(self.config.proxies) > 0:
+                logger.info(f"Using configured proxies: {len(self.config.proxies)} proxies available")
+                return self.config.proxies
+            elif isinstance(self.config.proxies, str):
+                logger.info("Using single configured proxy")
+                return [self.config.proxies]
+        
+        # No proxies configured
+        logger.info("No proxies configured, running without proxies")
+        return None
     
     def _process_results(self, results: List[Dict]) -> List[Dict]:
         """Process and normalize job results"""
@@ -943,21 +985,27 @@ class WorkerManager:
         
         logger.info("Scheduler stopped")
     
-    def shutdown(self):
-        """Graceful shutdown"""
-        logger.info("Shutting down worker manager...")
-        self.shutdown_flag.set()
+    def _get_proxies(self):
+        """Get proxies for scraping - prioritize Webshare.io, fallback to configured proxies"""
+        # First try Webshare.io rotating proxy
+        webshare_proxies = proxy_manager.get_proxy_dict()
+        if webshare_proxies:
+            logger.info("Using Webshare.io rotating proxy")
+            return webshare_proxies
         
-        # Wait for running workers to complete
-        for worker_id, future in self.running_workers.items():
-            try:
-                future.result(timeout=300)  # Wait up to 5 minutes
-            except Exception as e:
-                logger.error(f"Worker {worker_id} shutdown error: {e}")
+        # Fallback to configured proxies
+        if self.config.proxies:
+            # Convert list of proxy strings to format expected by JobSpy
+            if isinstance(self.config.proxies, list) and len(self.config.proxies) > 0:
+                logger.info(f"Using configured proxies: {len(self.config.proxies)} proxies available")
+                return self.config.proxies
+            elif isinstance(self.config.proxies, str):
+                logger.info("Using single configured proxy")
+                return [self.config.proxies]
         
-        # Shutdown executor
-        self.executor.shutdown(wait=True)
-        logger.info("Worker manager shutdown complete")
+        # No proxies configured
+        logger.info("No proxies configured, running without proxies")
+        return None
 
 
 if __name__ == "__main__":
