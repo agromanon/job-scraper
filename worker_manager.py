@@ -325,15 +325,20 @@ class ScrapingWorker:
                 'location_state' not in result or result['location_state'] is None):
                 if 'location' in result and result['location'] is not None and not (isinstance(result['location'], float) and math.isnan(result['location'])):
                     location_data = result['location']
-                    # Handle location as string from JobSpy (e.g., "Cuiabá, MT, BR")
+                    # Handle location as string from JobSpy (e.g., "Cuiabá, MT, BR" or "São Paulo, São Paulo")
                     if isinstance(location_data, str):
-                        # Parse "City, State, Country" format
+                        # Parse location string
                         parts = [part.strip() for part in location_data.split(',')]
                         if len(parts) >= 1:
                             result['location_city'] = parts[0]
                         if len(parts) >= 2:
                             result['location_state'] = parts[1]
-                        if len(parts) >= 3:
+                        # If we have a Brazilian worker and only city/state, assume Brazil
+                        if (len(parts) == 2 and 
+                            self.config.country and 
+                            'brazil' in self.config.country.lower()):
+                            result['location_country'] = 'Brazil'
+                        elif len(parts) >= 3:
                             result['location_country'] = parts[2]
                     # Handle Location object from JobSpy
                     elif hasattr(location_data, 'city'):
@@ -377,17 +382,42 @@ class ScrapingWorker:
             elif 'description' in result and result['description'] and not result.get('salary_min'):
                 import re
                 # Look for salary patterns in description
-                salary_match = re.search(r'(?:Sal..rio|Renda|Pagamento)[:\s]+(?:a partir de )?([R$]?[\d.,]+)', result['description'], re.IGNORECASE)
-                if salary_match:
-                    salary_text = salary_match.group(1).strip()
-                    # Extract numeric value
-                    salary_value = re.sub(r'[^\d.,]', '', salary_text)
-                    if salary_value:
-                        try:
-                            result['salary_min'] = float(salary_value.replace(',', '.'))
-                            result["salary_currency"] = "BRL" if "R$" in salary_text else "USD"
-                        except ValueError:
-                            pass
+                salary_patterns = [
+                    r'[R$]?\s*([\d\.,]+)\s*(?:a\s+)?(?:por\s+)?(?:mês|mes)',
+                    r'(?:salário|salario|bolsa)\s*(?:fixo)?\s*[R$]?\s*([\d\.,]+)',
+                    r'[R$]\s*([\d\.,]+)',
+                    r'(?:remuneração|remuneracao)\s*[R$]?\s*([\d\.,]+)',
+                    r'R\$\s*([\d\.,]+)\s*(?:\-|a)\s*R\$\s*([\d\.,]+)',  # Range format like "R$ 5.000 - R$ 7.000"
+                    r'R\$\s*([\d\.,]+)'  # Simple R$ format
+                ]
+                for pattern in salary_patterns:
+                    salary_match = re.search(pattern, result['description'], re.IGNORECASE)
+                    if salary_match:
+                        if len(salary_match.groups()) >= 2:
+                            # Handle salary range
+                            min_salary = salary_match.group(1).strip()
+                            max_salary = salary_match.group(2).strip()
+                            try:
+                                result['salary_min'] = float(min_salary.replace('.', '').replace(',', '.'))
+                                result['salary_max'] = float(max_salary.replace('.', '').replace(',', '.'))
+                                result['salary_currency'] = 'BRL'
+                                result['salary_interval'] = 'monthly'
+                                break
+                            except ValueError:
+                                continue
+                        else:
+                            # Handle single salary
+                            salary_text = salary_match.group(1).strip()
+                            # Extract numeric value
+                            salary_value = re.sub(r'[^\d.,]', '', salary_text)
+                            if salary_value:
+                                try:
+                                    result['salary_min'] = float(salary_value.replace('.', '').replace(',', '.'))
+                                    result['salary_currency'] = 'BRL'
+                                    result['salary_interval'] = 'monthly'
+                                    break
+                                except ValueError:
+                                    pass
             
             # Flatten job type
             if 'job_type' in result and result['job_type']:
