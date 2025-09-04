@@ -1476,6 +1476,21 @@ def ensure_schema_initialized():
 try:
     print("Attempting database schema initialization on startup...")
     initialize_database_schema()
+    
+    # Run database fix to ensure all columns exist
+    print("Running database fix to ensure all columns exist...")
+    import subprocess
+    import sys
+    try:
+        result = subprocess.run([sys.executable, 'fix_database.py'], 
+                              cwd=os.path.dirname(os.path.abspath(__file__)),
+                              capture_output=True, text=True, timeout=30)
+        print(f"Database fix script output: {result.stdout}")
+        if result.stderr:
+            print(f"Database fix script errors: {result.stderr}")
+    except Exception as e:
+        print(f"Failed to run database fix script: {e}")
+        
 except Exception as e:
     print(f"Startup schema initialization failed (will retry on first request): {e}")
 
