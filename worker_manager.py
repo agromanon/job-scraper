@@ -266,15 +266,22 @@ class ScrapingWorker:
             # Execute scraping
             logger.info(f"Scraping {site_enum.name} with offset={self.config.current_offset}, results_wanted={self.config.results_per_run}")
             
-            # For Glassdoor, add date filtering and search variation to get fresh jobs
-            hours_old = self.config.hours_old if self.config.hours_old else (24 if site_enum == Site.GLASSDOOR else None)
-            
-            # Add timestamp to search term for Glassdoor to get varied results
+            # For Glassdoor, use enhanced strategies to get diverse results
             search_term = self.config.search_term or None
-            if site_enum == Site.GLASSDOOR and search_term:
-                import time
-                timestamp = int(time.time() / 3600) % 24  # Hour-based variation
-                search_term = f"{search_term} {timestamp}"
+            hours_old = self.config.hours_old
+            
+            if site_enum == Site.GLASSDOOR:
+                # Apply date filtering if not set
+                if not hours_old:
+                    hours_old = 24
+                
+                # Add search variation to get different results
+                # Use offset as part of search to make each request unique
+                if search_term:
+                    search_term = f"{search_term} {self.config.current_offset//10}"
+                else:
+                    # If no search term, use offset to create variation
+                    search_term = f"job {self.config.current_offset//10}"
             
             df = scrape_jobs(
                 site_name=[site_enum],
