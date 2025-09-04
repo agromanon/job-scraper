@@ -516,8 +516,8 @@ def edit_worker(worker_id):
                 schedule_hours, schedule_minute_offset, timezone, proxy_rotation_policy, proxies,
                 max_retries, timeout, rate_limit_requests, rate_limit_seconds, description_format,
                 linkedin_fetch_description, database_id, table_name, status, memory_limit_mb,
-                cpu_limit_cores, max_runtime_minutes, tags, next_run, last_run, last_success,
-                last_error, consecutive_errors, created_at, updated_at
+                cpu_limit_cores, max_runtime_minutes, max_consecutive_errors, auto_pause_on_errors, tags, 
+                next_run, last_run, last_success, last_error, consecutive_errors, created_at, updated_at
             FROM scraping_workers WHERE id = %s
         """, (worker_id,), fetch=True)
         if not worker_data:
