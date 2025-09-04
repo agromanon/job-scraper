@@ -1526,6 +1526,17 @@ TEMPLATE
 # Expose port
 EXPOSE 5000
 
+# Add job status checker script
+COPY job_status_checker.py /app/
+RUN chmod +x /app/job_status_checker.py
+
+# Set up cron for job status checking (runs daily at 2 AM)
+RUN apt-get update && apt-get install -y cron
+RUN echo "0 2 * * * cd /app && python3 job_status_checker.py >> /var/log/job_status_checker.log 2>&1" > /etc/cron.d/job-status-checker
+RUN chmod 0644 /etc/cron.d/job-status-checker
+RUN crontab /etc/cron.d/job-status-checker
+RUN touch /var/log/job_status_checker.log
+
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
