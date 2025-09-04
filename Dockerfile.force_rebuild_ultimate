@@ -1529,10 +1529,8 @@ EXPOSE 5000
 # Add job status checker script
 COPY job_status_checker.py /app/
 COPY fix_database.py /app/
-RUN chmod +x /app/job_status_checker.py /app/fix_database.py
-
-# Run database fix on startup
-RUN cd /app && python3 fix_database.py
+COPY startup.sh /app/
+RUN chmod +x /app/job_status_checker.py /app/fix_database.py /app/startup.sh
 
 # Set up cron for job status checking (runs daily at 2 AM)
 RUN apt-get update && apt-get install -y cron
@@ -1545,5 +1543,5 @@ RUN touch /var/log/job_status_checker.log
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
-# Run the application
-CMD ["python", "worker_admin.py"]
+# Run the application via startup script
+CMD ["/app/startup.sh"]
