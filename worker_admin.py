@@ -1250,11 +1250,47 @@ def initialize_database_schema():
                 print(f"scraping_databases table exists: {databases_table is not None}")
                 
                 if workers_table and databases_table:
-                    print("Database tables already exist, skipping schema initialization")
+                    print("Database tables already exist, checking for schema updates...")
+                    # For existing installations, still execute ALTER TABLE statements
+                    try:
+                        # Execute only ALTER TABLE statements for schema updates
+                        alter_statements = []
+                        current_statement = []
+                        
+                        for line in schema_sql.split('\n'):
+                            line = line.strip()
+                            if line.startswith('--') or not line:
+                                continue
+                                
+                            if line.upper().startswith('ALTER TABLE'):
+                                current_statement.append(line)
+                                if ';' in line:
+                                    alter_statements.append(' '.join(current_statement))
+                                    current_statement = []
+                            elif current_statement and ';' in line:
+                                current_statement.append(line)
+                                alter_statements.append(' '.join(current_statement))
+                                current_statement = []
+                            elif current_statement:
+                                current_statement.append(line)
+                        
+                        # Execute ALTER TABLE statements
+                        for statement in alter_statements:
+                            if statement.strip():
+                                print(f"Executing schema update: {statement[:100]}...")
+                                cursor.execute(statement)
+                        
+                        conn.commit()
+                        print("Schema updates applied successfully")
+                    except Exception as e:
+                        conn.rollback()
+                        print(f"Schema updates failed: {e}")
+                        app.logger.warning(f"Schema updates failed: {e}")
+                    
                     cursor.close()
                     release_db_connection(conn)
                 else:
-                    print("Tables not found, proceeding with schema initialization...")
+                    print("Tables not found, proceeding with full schema initialization...")
                     
                     # Execute the entire schema at once to handle PL/pgSQL functions properly
                     try:
