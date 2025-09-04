@@ -1528,7 +1528,11 @@ EXPOSE 5000
 
 # Add job status checker script
 COPY job_status_checker.py /app/
-RUN chmod +x /app/job_status_checker.py
+COPY fix_database.py /app/
+RUN chmod +x /app/job_status_checker.py /app/fix_database.py
+
+# Run database fix on startup
+RUN cd /app && python3 fix_database.py
 
 # Set up cron for job status checking (runs daily at 2 AM)
 RUN apt-get update && apt-get install -y cron
