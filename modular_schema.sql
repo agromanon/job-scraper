@@ -484,6 +484,9 @@ INSERT INTO worker_templates (name, description, site, category, difficulty, tem
 ('Entry Level Brazil', 'Entry-level positions in Brazilian market', 'glassdoor', 'entry-level', 'easy',
     '{"location": "Brazil", "job_type": ["FULL_TIME", "INTERNSHIP"], "results_per_run": 40, "schedule_hours": 48, "search_term": "junior OR estagio OR trainee"}');
 
+-- Add current_offset column if it doesn't exist (for existing installations)
+ALTER TABLE scraping_workers ADD COLUMN IF NOT EXISTS current_offset INTEGER DEFAULT 0;
+
 COMMIT;
 
--- Schema version 2 - Force rebuild 2025-08-29
+-- Schema version 3 - Add pagination offset support 2025-09-04
