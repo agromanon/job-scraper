@@ -16,6 +16,7 @@ CREATE TABLE scraping_workers (
     linkedin_company_ids INTEGER[],
     hours_old INTEGER,
     results_per_run INTEGER DEFAULT 50,
+    current_offset INTEGER DEFAULT 0,  -- Pagination offset for rotating through search results
     schedule_hours INTEGER DEFAULT 24,  -- How often to run (hours)
     schedule_minute_offset INTEGER DEFAULT 0,  -- Minute offset for staggered execution
     timezone VARCHAR(50) DEFAULT 'America/Sao_Paulo',

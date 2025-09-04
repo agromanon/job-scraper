@@ -94,6 +94,7 @@ class WorkerForm(FlaskForm):
     
     hours_old = IntegerField('Jobs Posted Within Last (hours)', validators=[Optional(), NumberRange(min=1)])
     results_per_run = IntegerField('Results Per Run', default=50, validators=[NumberRange(min=1, max=1000)])
+    current_offset = IntegerField('Current Offset', default=0, validators=[NumberRange(min=0)])
     
     schedule_hours = IntegerField('Run Every (hours)', default=24, validators=[NumberRange(min=1, max=168)])
     schedule_minute_offset = IntegerField('Minute Offset', default=0, validators=[NumberRange(min=0, max=59)])
@@ -436,7 +437,7 @@ def new_worker():
             execute_query("""
                 INSERT INTO scraping_workers (
                     name, description, site, search_term, location, country, distance, job_type,
-                    is_remote, easy_apply, linkedin_company_ids, hours_old, results_per_run,
+                    is_remote, easy_apply, linkedin_company_ids, hours_old, results_per_run, current_offset,
                     schedule_hours, schedule_minute_offset, timezone, proxy_rotation_policy, proxies,
                     max_retries, timeout, rate_limit_requests, rate_limit_seconds, description_format,
                     linkedin_fetch_description, database_id, table_name, memory_limit_mb,
@@ -457,6 +458,7 @@ def new_worker():
                 linkedin_company_ids,
                 form.hours_old.data,
                 form.results_per_run.data,
+                form.current_offset.data,
                 form.schedule_hours.data,
                 schedule_minute_offset,
                 timezone,
@@ -544,6 +546,7 @@ def edit_worker(worker_id):
             
             form.hours_old.data = worker['hours_old']
             form.results_per_run.data = worker['results_per_run']
+            form.current_offset.data = worker['current_offset']
             form.schedule_hours.data = worker['schedule_hours']
             form.schedule_minute_offset.data = worker['schedule_minute_offset']
             form.timezone.data = worker['timezone']
@@ -602,7 +605,7 @@ def edit_worker(worker_id):
                     UPDATE scraping_workers SET
                         name = %s, description = %s, site = %s, search_term = %s, location = %s,
                         country = %s, distance = %s, job_type = %s, is_remote = %s, easy_apply = %s,
-                        linkedin_company_ids = %s, hours_old = %s, results_per_run = %s, schedule_hours = %s,
+                        linkedin_company_ids = %s, hours_old = %s, results_per_run = %s, current_offset = %s, schedule_hours = %s,
                         schedule_minute_offset = %s, timezone = %s, proxy_rotation_policy = %s, proxies = %s,
                         max_retries = %s, timeout = %s, rate_limit_requests = %s, rate_limit_seconds = %s,
                         description_format = %s, linkedin_fetch_description = %s, database_id = %s,
@@ -623,6 +626,7 @@ def edit_worker(worker_id):
                     linkedin_company_ids,
                     form.hours_old.data,
                     form.results_per_run.data,
+                    form.current_offset.data,
                     form.schedule_hours.data,
                     form.schedule_minute_offset.data,
                     form.timezone.data,
@@ -746,6 +750,7 @@ def execute_worker(worker_id):
             linkedin_company_ids=worker_record['linkedin_company_ids'] or [],
             hours_old=worker_record['hours_old'],
             results_per_run=worker_record['results_per_run'],
+            current_offset=worker_record['current_offset'],
             schedule_hours=worker_record['schedule_hours'],
             schedule_minute_offset=worker_record['schedule_minute_offset'],
             timezone=worker_record['timezone'],

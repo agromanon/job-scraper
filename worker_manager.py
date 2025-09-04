@@ -86,6 +86,8 @@ class WorkerConfig:
     cpu_limit_cores: float
     max_runtime_minutes: int
     tags: List[str]
+    # Pagination offset for rotating through search results
+    current_offset: int = 0
 
 
 @dataclass
@@ -275,6 +277,7 @@ class ScrapingWorker:
                 linkedin_company_ids=linkedin_company_ids,
                 hours_old=self.config.hours_old,
                 results_wanted=self.config.results_per_run,
+                offset=self.config.current_offset,
                 description_format=desc_format,
                 timeout=self.config.timeout,
                 proxies=self._get_proxies()
@@ -870,31 +873,37 @@ class WorkerManager:
             cursor = conn.cursor()
             
             if result['status'] == 'success':
+                # Update last success and rotate offset for next run
                 cursor.execute("""
                     UPDATE scraping_workers 
-                    SET 
-                        last_run = %s,
+                    SET last_run = %s,
                         last_success = %s,
                         consecutive_errors = 0,
-                        status = 'active',
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE id = %s
-                """, (result['end_time'], result['end_time'], result['worker_id']))
-            else:
-                cursor.execute("""
-                    UPDATE scraping_workers 
-                    SET 
-                        last_run = %s,
-                        consecutive_errors = consecutive_errors + 1,
-                        last_error = %s,
-                        status = CASE 
-                            WHEN consecutive_errors + 1 >= max_consecutive_errors AND auto_pause_on_errors 
-                            THEN 'paused' 
-                            ELSE 'active' 
+                        current_offset = CASE 
+                            WHEN current_offset + results_per_run >= 1000 THEN 0  -- Reset if too high
+                            ELSE current_offset + results_per_run
                         END,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s
-                """, (result['end_time'], result.get('error_message', 'Unknown error'), result['worker_id']))
+                """, (
+                    result['end_time'],
+                    result['end_time'],
+                    result['worker_id']
+                ))
+            else:
+                # Update error count
+                cursor.execute("""
+                    UPDATE scraping_workers 
+                    SET last_run = %s,
+                        last_error = %s,
+                        consecutive_errors = consecutive_errors + 1,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                """, (
+                    result['end_time'],
+                    result['end_time'],
+                    result['worker_id']
+                ))
             
             conn.commit()
             cursor.close()
