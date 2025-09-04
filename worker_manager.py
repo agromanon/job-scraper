@@ -264,6 +264,7 @@ class ScrapingWorker:
             linkedin_company_ids = self.config.linkedin_company_ids if self.config.linkedin_company_ids else None
             
             # Execute scraping
+            logger.info(f"Scraping {site_enum.name} with offset={self.config.current_offset}, results_wanted={self.config.results_per_run}")
             df = scrape_jobs(
                 site_name=[site_enum],
                 search_term=self.config.search_term or None,
