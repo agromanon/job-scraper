@@ -289,6 +289,9 @@ class ScrapingWorker:
             if len(df) > 0:
                 logger.debug(f"JobSpy DataFrame columns: {list(df.columns)}")
                 logger.debug(f"First job data: {df.iloc[0].to_dict()}")
+                # Log a few job URLs to see if they're different
+                job_urls = df['job_url'].head(5).tolist() if 'job_url' in df.columns else []
+                logger.debug(f"First 5 job URLs: {job_urls}")
             return df.to_dict('records')
             
         except Exception as e:
