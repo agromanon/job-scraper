@@ -273,15 +273,12 @@ class ScrapingWorker:
             if site_enum == Site.GLASSDOOR:
                 # Apply date filtering if not set
                 if not hours_old:
-                    hours_old = 24
+                    hours_old = 48  # Increased to get more results
                 
-                # Add search variation to get different results
-                # Use offset as part of search to make each request unique
-                if search_term:
-                    search_term = f"{search_term} {self.config.current_offset//10}"
-                else:
-                    # If no search term, use offset to create variation
-                    search_term = f"job {self.config.current_offset//10}"
+                # Use broader search terms to ensure consistent results
+                # Add common job terms to increase match probability
+                if not search_term:
+                    search_term = "job OR vaga OR position OR role OR career"
             
             df = scrape_jobs(
                 site_name=[site_enum],
