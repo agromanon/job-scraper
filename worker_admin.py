@@ -1277,6 +1277,7 @@ def initialize_database_schema():
                         alter_statements = []
                         current_statement = []
                         
+                        print("Parsing schema for ALTER TABLE statements...")
                         for line in schema_sql.split('\n'):
                             line = line.strip()
                             if line.startswith('--') or not line:
@@ -1284,16 +1285,22 @@ def initialize_database_schema():
                                 
                             if line.upper().startswith('ALTER TABLE'):
                                 current_statement.append(line)
+                                print(f"Found ALTER TABLE start: {line[:50]}...")
                                 if ';' in line:
-                                    alter_statements.append(' '.join(current_statement))
+                                    statement = ' '.join(current_statement)
+                                    alter_statements.append(statement)
+                                    print(f"Complete ALTER statement: {statement[:100]}...")
                                     current_statement = []
                             elif current_statement and ';' in line:
                                 current_statement.append(line)
-                                alter_statements.append(' '.join(current_statement))
+                                statement = ' '.join(current_statement)
+                                alter_statements.append(statement)
+                                print(f"Complete ALTER statement: {statement[:100]}...")
                                 current_statement = []
                             elif current_statement:
                                 current_statement.append(line)
                         
+                        print(f"Found {len(alter_statements)} ALTER TABLE statements to execute")
                         # Execute ALTER TABLE statements
                         for statement in alter_statements:
                             if statement.strip():
@@ -1305,6 +1312,8 @@ def initialize_database_schema():
                     except Exception as e:
                         conn.rollback()
                         print(f"Schema updates failed: {e}")
+                        import traceback
+                        print(f"Traceback: {traceback.format_exc()}")
                         app.logger.warning(f"Schema updates failed: {e}")
                     
                     cursor.close()
