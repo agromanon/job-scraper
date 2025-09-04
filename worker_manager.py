@@ -265,9 +265,20 @@ class ScrapingWorker:
             
             # Execute scraping
             logger.info(f"Scraping {site_enum.name} with offset={self.config.current_offset}, results_wanted={self.config.results_per_run}")
+            
+            # For Glassdoor, add date filtering and search variation to get fresh jobs
+            hours_old = self.config.hours_old if self.config.hours_old else (24 if site_enum == Site.GLASSDOOR else None)
+            
+            # Add timestamp to search term for Glassdoor to get varied results
+            search_term = self.config.search_term or None
+            if site_enum == Site.GLASSDOOR and search_term:
+                import time
+                timestamp = int(time.time() / 3600) % 24  # Hour-based variation
+                search_term = f"{search_term} {timestamp}"
+            
             df = scrape_jobs(
                 site_name=[site_enum],
-                search_term=self.config.search_term or None,
+                search_term=search_term,
                 location=self.config.location or None,
                 country_indeed=self.config.country.lower() if self.config.country and site_enum in [Site.INDEED, Site.GLASSDOOR] else 'usa',
                 distance=self.config.distance,
@@ -276,7 +287,7 @@ class ScrapingWorker:
                 easy_apply=self.config.easy_apply,
                 linkedin_fetch_description=self.config.linkedin_fetch_description,
                 linkedin_company_ids=linkedin_company_ids,
-                hours_old=self.config.hours_old,
+                hours_old=hours_old,
                 results_wanted=self.config.results_per_run,
                 offset=self.config.current_offset,
                 description_format=desc_format,
