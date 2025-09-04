@@ -509,7 +509,17 @@ def edit_worker(worker_id):
     """Edit existing worker"""
     try:
         # Get worker data
-        worker_data = execute_query("SELECT * FROM scraping_workers WHERE id = %s", (worker_id,), fetch=True)
+        worker_data = execute_query("""
+            SELECT 
+                id, name, description, site, search_term, location, country, distance, job_type,
+                is_remote, easy_apply, linkedin_company_ids, hours_old, results_per_run, current_offset,
+                schedule_hours, schedule_minute_offset, timezone, proxy_rotation_policy, proxies,
+                max_retries, timeout, rate_limit_requests, rate_limit_seconds, description_format,
+                linkedin_fetch_description, database_id, table_name, status, memory_limit_mb,
+                cpu_limit_cores, max_runtime_minutes, tags, next_run, last_run, last_success,
+                last_error, consecutive_errors, created_at, updated_at
+            FROM scraping_workers WHERE id = %s
+        """, (worker_id,), fetch=True)
         if not worker_data:
             flash('Worker not found', 'error')
             return redirect(url_for('list_workers'))
@@ -728,7 +738,17 @@ def execute_worker(worker_id):
             return redirect(url_for('list_workers'))
         
         # Get worker configuration
-        worker_data = execute_query("SELECT * FROM scraping_workers WHERE id = %s", (worker_id,), fetch=True)
+        worker_data = execute_query("""
+            SELECT 
+                id, name, description, site, search_term, location, country, distance, job_type,
+                is_remote, easy_apply, linkedin_company_ids, hours_old, results_per_run, current_offset,
+                schedule_hours, schedule_minute_offset, timezone, proxy_rotation_policy, proxies,
+                max_retries, timeout, rate_limit_requests, rate_limit_seconds, description_format,
+                linkedin_fetch_description, database_id, table_name, status, memory_limit_mb,
+                cpu_limit_cores, max_runtime_minutes, tags, next_run, last_run, last_success,
+                last_error, consecutive_errors, created_at, updated_at
+            FROM scraping_workers WHERE id = %s
+        """, (worker_id,), fetch=True)
         if not worker_data:
             flash('Worker not found', 'error')
             return redirect(url_for('list_workers'))
