@@ -564,7 +564,7 @@ class ScrapingWorker:
         
         # Insert only new jobs
         try:
-            inserted_count = self._batch_insert_jobs(cursor, db_config, jobs_to_insert, self.config.table_name)
+            inserted_count = self._batch_insert(cursor, db_config, self.config.table_name, jobs_to_insert)
             db_conn.commit()
             
             cursor.close()
