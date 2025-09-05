@@ -290,17 +290,38 @@ class ScrapingWorker:
                 # Based on successful manual search: "vagas google São Paulo, SP"
                 location = self.config.location
                 
+                # Handle Brazilian location formatting
+                if location:
+                    # Convert common Brazilian location abbreviations to full format
+                    brazilian_locations = {
+                        "SP": "São Paulo, SP",
+                        "RJ": "Rio de Janeiro, RJ",
+                        "MG": "Minas Gerais, MG",
+                        "RS": "Rio Grande do Sul, RS",
+                        "SC": "Santa Catarina, SC",
+                        "PR": "Paraná, PR",
+                        "BA": "Bahia, BA",
+                        "PE": "Pernambuco, PE",
+                        "CE": "Ceará, CE",
+                        "GO": "Goiás, GO",
+                        "DF": "Brasília, DF"
+                    }
+                    # Use full format if abbreviation is found, otherwise use as-is
+                    formatted_location = brazilian_locations.get(location.upper(), location)
+                else:
+                    formatted_location = None
+                
                 # Handle different combinations of search term and location for Brazil
-                if search_term and location:
+                if search_term and formatted_location:
                     # Both search term and location provided - use Brazilian format
                     # Format: "vagas {search_term} {location}"
-                    google_search_term = f"vagas {search_term} {location}"
+                    google_search_term = f"vagas {search_term} {formatted_location}"
                 elif search_term:
                     # Only search term provided
                     google_search_term = f"vagas {search_term}"
-                elif location:
+                elif formatted_location:
                     # Only location provided
-                    google_search_term = f"vagas {location}"
+                    google_search_term = f"vagas {formatted_location}"
                 else:
                     # Neither provided - use general Brazilian job search
                     google_search_term = "vagas"

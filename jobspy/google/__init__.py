@@ -123,7 +123,7 @@ class Google(Scraper):
         params = {"q": query, "udm": "8"}
         
         # Add Brazil-specific parameters if country is Brazil
-        if self.scraper_input.country and self.scraper_input.country == "BRAZIL":
+        if self.scraper_input.country and self.scraper_input.country.name == "BRAZIL":
             params["jbr"] = "sep:0"
         
         response = self.session.get(self.url, headers=headers_initial, params=params)
