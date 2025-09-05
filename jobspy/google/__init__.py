@@ -45,6 +45,11 @@ class Google(Scraper):
         :param scraper_input: Information about job search criteria.
         :return: JobResponse containing a list of jobs.
         """
+        print(f"DEBUG Google scrape: scraper_input type: {type(scraper_input)}")
+        print(f"DEBUG Google scrape: scraper_input.country: {scraper_input.country}")
+        print(f"DEBUG Google scrape: scraper_input.search_term: {scraper_input.search_term}")
+        print(f"DEBUG Google scrape: scraper_input.google_search_term: {scraper_input.google_search_term}")
+        
         log.info(f"Google scraper input - country: {scraper_input.country}, search_term: {scraper_input.search_term}, google_search_term: {scraper_input.google_search_term}")
         
         self.scraper_input = scraper_input
