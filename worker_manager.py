@@ -308,7 +308,7 @@ class ScrapingWorker:
                 site_name=[site_enum],
                 search_term=search_term,
                 google_search_term=google_search_term,
-                location=self.config.location or None,
+                location=self.config.location or None if site_enum != Site.GOOGLE else None,
                 country_indeed=self.config.country.lower() if self.config.country and site_enum in [Site.INDEED, Site.GLASSDOOR] else 'usa',
                 distance=self.config.distance,
                 job_type=job_types if job_types else None,
