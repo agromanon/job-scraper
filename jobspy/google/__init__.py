@@ -130,11 +130,17 @@ class Google(Scraper):
         params = {"q": query, "udm": "8"}
         
         # Add Brazil-specific parameters if country is Brazil
+        log.info(f"Country check - scraper_input.country: {self.scraper_input.country}")
+        if self.scraper_input.country:
+            log.info(f"Country type: {type(self.scraper_input.country)}")
+            log.info(f"Country repr: {repr(self.scraper_input.country)}")
+            log.info(f"Country name: {getattr(self.scraper_input.country, 'name', 'NO NAME ATTR')}")
+            
         if self.scraper_input.country and self.scraper_input.country.name == "BRAZIL":
             params["jbr"] = "sep:0"
             log.info("Added Brazil-specific parameter: jbr=sep:0")
         else:
-            log.info(f"Country is not Brazil: {self.scraper_input.country}")
+            log.info(f"Country is not Brazil or no country set")
         
         log.info(f"Google search params: {params}")
         response = self.session.get(self.url, headers=headers_initial, params=params)
