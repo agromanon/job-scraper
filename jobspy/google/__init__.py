@@ -121,6 +121,11 @@ class Google(Scraper):
             query = self.scraper_input.google_search_term
 
         params = {"q": query, "udm": "8"}
+        
+        # Add Brazil-specific parameters if country is Brazil
+        if self.scraper_input.country and self.scraper_input.country == "BRAZIL":
+            params["jbr"] = "sep:0"
+        
         response = self.session.get(self.url, headers=headers_initial, params=params)
 
         pattern_fc = r'<div jsname="Yust4d"[^>]+data-async-fc="([^"]+)"'

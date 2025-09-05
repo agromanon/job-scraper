@@ -286,23 +286,24 @@ class ScrapingWorker:
                     search_term = f"job OR vaga OR position OR role OR career OR trabalho OR employment {offset_variation}"
             
             elif site_enum == Site.GOOGLE:
-                # For Google jobs, construct the search term properly
-                # Google jobs require specific format: "job_title jobs near location"
+                # For Google jobs, construct the search term properly for Brazilian market
+                # Based on successful manual search: "vagas google São Paulo, SP"
                 location = self.config.location
                 
-                # Handle different combinations of search term and location
+                # Handle different combinations of search term and location for Brazil
                 if search_term and location:
-                    # Both search term and location provided
-                    google_search_term = f"{search_term} jobs near {location}"
+                    # Both search term and location provided - use Brazilian format
+                    # Format: "vagas {search_term} {location}"
+                    google_search_term = f"vagas {search_term} {location}"
                 elif search_term:
                     # Only search term provided
-                    google_search_term = f"{search_term} jobs"
+                    google_search_term = f"vagas {search_term}"
                 elif location:
                     # Only location provided
-                    google_search_term = f"jobs near {location}"
+                    google_search_term = f"vagas {location}"
                 else:
-                    # Neither provided
-                    google_search_term = "jobs"
+                    # Neither provided - use general Brazilian job search
+                    google_search_term = "vagas"
             
             df = scrape_jobs(
                 site_name=[site_enum],
