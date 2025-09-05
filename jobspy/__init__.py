@@ -102,14 +102,17 @@ def scrape_jobs(
     )
 
     def scrape_site(site: Site) -> Tuple[str, JobResponse]:
+        print(f"DEBUG: About to instantiate scraper for site: {site}")
         scraper_class = SCRAPER_MAPPING[site]
+        print(f"DEBUG: Scraper class: {scraper_class}")
         scraper = scraper_class(proxies=proxies, ca_cert=ca_cert, user_agent=user_agent)
+        print(f"DEBUG: Scraper instantiated: {scraper}")
         scraped_data: JobResponse = scraper.scrape(scraper_input)
+        print(f"DEBUG: Scraping completed, got {len(scraped_data.jobs) if scraped_data.jobs else 0} jobs")
         cap_name = site.value.capitalize()
         site_name = "ZipRecruiter" if cap_name == "Zip_recruiter" else cap_name
         site_name = "LinkedIn" if cap_name == "Linkedin" else cap_name
-        create_logger(site_name).info(f"finished scraping")
-        return site.value, scraped_data
+        return site_name, scraped_data
 
     site_to_jobs_dict = {}
 
