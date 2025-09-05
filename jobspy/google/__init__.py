@@ -44,6 +44,8 @@ class Google(Scraper):
         :param scraper_input: Information about job search criteria.
         :return: JobResponse containing a list of jobs.
         """
+        log.info(f"Google scraper input - country: {scraper_input.country}, search_term: {scraper_input.search_term}, google_search_term: {scraper_input.google_search_term}")
+        
         self.scraper_input = scraper_input
         self.scraper_input.results_wanted = min(900, scraper_input.results_wanted)
 
@@ -51,6 +53,9 @@ class Google(Scraper):
             proxies=self.proxies, ca_cert=self.ca_cert, is_tls=False, has_retry=True
         )
         forward_cursor, job_list = self._get_initial_cursor_and_jobs()
+        
+        log.info(f"Initial jobs found: {len(job_list)}")
+        
         if forward_cursor is None:
             log.warning(
                 "initial cursor not found, try changing your query or there was at most 10 results"
@@ -120,24 +125,36 @@ class Google(Scraper):
         if self.scraper_input.google_search_term:
             query = self.scraper_input.google_search_term
 
+        log.info(f"Google search query: '{query}'")
+        
         params = {"q": query, "udm": "8"}
         
         # Add Brazil-specific parameters if country is Brazil
         if self.scraper_input.country and self.scraper_input.country.name == "BRAZIL":
             params["jbr"] = "sep:0"
+            log.info("Added Brazil-specific parameter: jbr=sep:0")
+        else:
+            log.info(f"Country is not Brazil: {self.scraper_input.country}")
         
         log.info(f"Google search params: {params}")
         response = self.session.get(self.url, headers=headers_initial, params=params)
-
+        
+        log.info(f"Google response status: {response.status_code}")
+        
         pattern_fc = r'<div jsname="Yust4d"[^>]+data-async-fc="([^"]+)"'
         match_fc = re.search(pattern_fc, response.text)
         data_async_fc = match_fc.group(1) if match_fc else None
+        
+        log.info(f"Found forward cursor: {data_async_fc is not None}")
+        
         jobs_raw = find_job_info_initial_page(response.text)
         jobs = []
         for job_raw in jobs_raw:
             job_post = self._parse_job(job_raw)
             if job_post:
                 jobs.append(job_post)
+        
+        log.info(f"Parsed initial jobs: {len(jobs)}")
         return data_async_fc, jobs
 
     def _get_jobs_next_page(self, forward_cursor: str) -> Tuple[list[JobPost], str]:
