@@ -275,9 +275,14 @@ class ScrapingWorker:
                 if not hours_old:
                     hours_old = 24  # Focus on recent jobs to get new listings
                 
-                # Use broader search terms to ensure consistent results
-                if not search_term:
-                    search_term = "job OR vaga OR position OR role OR career OR trabalho OR trabalho"
+                # Use offset-based search variation to get different results
+                # This helps bypass Glassdoor's tendency to return same jobs regardless of offset
+                offset_variation = self.config.current_offset // 10  # Group offsets (0,10,20 -> 0; 100,110,120 -> 10)
+                
+                if search_term:
+                    search_term = f"{search_term} {offset_variation}"
+                else:
+                    search_term = f"job OR vaga OR position OR role OR career OR trabalho OR employment {offset_variation}"
             
             df = scrape_jobs(
                 site_name=[site_enum],
