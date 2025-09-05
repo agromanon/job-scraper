@@ -273,12 +273,11 @@ class ScrapingWorker:
             if site_enum == Site.GLASSDOOR:
                 # Apply date filtering if not set
                 if not hours_old:
-                    hours_old = 48  # Increased to get more results
+                    hours_old = 24  # Focus on recent jobs to get new listings
                 
                 # Use broader search terms to ensure consistent results
-                # Add common job terms to increase match probability
                 if not search_term:
-                    search_term = "job OR vaga OR position OR role OR career"
+                    search_term = "job OR vaga OR position OR role OR career OR trabalho OR trabalho"
             
             df = scrape_jobs(
                 site_name=[site_enum],
@@ -307,6 +306,9 @@ class ScrapingWorker:
                 # Log a few job URLs to see if they're different
                 job_urls = df['job_url'].head(5).tolist() if 'job_url' in df.columns else []
                 logger.debug(f"First 5 job URLs: {job_urls}")
+                logger.info(f"Scraped {len(df)} jobs from Glassdoor")
+            else:
+                logger.info("No jobs found from Glassdoor")
             return df.to_dict('records')
             
         except Exception as e:
