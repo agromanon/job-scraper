@@ -268,6 +268,7 @@ class ScrapingWorker:
             
             # For Glassdoor, use enhanced strategies to get diverse results
             search_term = self.config.search_term or None
+            google_search_term = None
             hours_old = self.config.hours_old
             
             if site_enum == Site.GLASSDOOR:
@@ -284,9 +285,21 @@ class ScrapingWorker:
                 else:
                     search_term = f"job OR vaga OR position OR role OR career OR trabalho OR employment {offset_variation}"
             
+            elif site_enum == Site.GOOGLE:
+                # For Google jobs, construct the search term properly
+                # Google jobs require specific format: "job_title jobs near location"
+                location = self.config.location or ""
+                if search_term and location:
+                    google_search_term = f"{search_term} jobs near {location}"
+                elif search_term:
+                    google_search_term = f"{search_term} jobs"
+                else:
+                    google_search_term = "jobs"
+            
             df = scrape_jobs(
                 site_name=[site_enum],
                 search_term=search_term,
+                google_search_term=google_search_term,
                 location=self.config.location or None,
                 country_indeed=self.config.country.lower() if self.config.country and site_enum in [Site.INDEED, Site.GLASSDOOR] else 'usa',
                 distance=self.config.distance,
@@ -311,9 +324,9 @@ class ScrapingWorker:
                 # Log a few job URLs to see if they're different
                 job_urls = df['job_url'].head(5).tolist() if 'job_url' in df.columns else []
                 logger.debug(f"First 5 job URLs: {job_urls}")
-                logger.info(f"Scraped {len(df)} jobs from Glassdoor")
+                logger.info(f"Scraped {len(df)} jobs from {site_enum.name}")
             else:
-                logger.info("No jobs found from Glassdoor")
+                logger.info(f"No jobs found from {site_enum.name}")
             return df.to_dict('records')
             
         except Exception as e:
