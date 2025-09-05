@@ -288,12 +288,20 @@ class ScrapingWorker:
             elif site_enum == Site.GOOGLE:
                 # For Google jobs, construct the search term properly
                 # Google jobs require specific format: "job_title jobs near location"
-                location = self.config.location or ""
+                location = self.config.location
+                
+                # Handle different combinations of search term and location
                 if search_term and location:
+                    # Both search term and location provided
                     google_search_term = f"{search_term} jobs near {location}"
                 elif search_term:
+                    # Only search term provided
                     google_search_term = f"{search_term} jobs"
+                elif location:
+                    # Only location provided
+                    google_search_term = f"jobs near {location}"
                 else:
+                    # Neither provided
                     google_search_term = "jobs"
             
             df = scrape_jobs(
