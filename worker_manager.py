@@ -534,39 +534,52 @@ class ScrapingWorker:
         # Create table if it doesn't exist
         self._ensure_table_exists(cursor, db_config, self.config.table_name)
         
-        # Deduplication logic
+        # Filter out duplicates before insertion
         duplicates_found = 0
         jobs_to_insert = []
-        jobs_to_update = []
         
         for result in results:
-            if self._is_duplicate(cursor, db_config, self.config.table_name, result):
+            # Check if job already exists
+            cursor.execute(f"""
+                SELECT 1 FROM {self.config.table_name} 
+                WHERE job_url = %s
+            """, (result.get('job_url'),))
+            
+            if cursor.fetchone():
                 duplicates_found += 1
-                # Check if we need to update
-                if self._should_update_duplicate(cursor, db_config, self.config.table_name, result):
-                    jobs_to_update.append(result)
+                # Skip this job (don't insert)
             else:
                 jobs_to_insert.append(result)
         
-        # Batch insert
-        inserted_count = 0
-        if jobs_to_insert:
-            inserted_count = self._batch_insert(cursor, db_config, self.config.table_name, jobs_to_insert)
+        logger.info(f"Filtered results: {len(results)} total, {len(jobs_to_insert)} new, {duplicates_found} duplicates")
         
-        # Batch update
-        updated_count = 0
-        if jobs_to_update:
-            updated_count = self._batch_update(cursor, db_config, self.config.table_name, jobs_to_update)
+        if not jobs_to_insert:
+            cursor.close()
+            return {
+                'jobs_inserted': 0, 
+                'jobs_updated': 0, 
+                'jobs_skipped': len(results), 
+                'duplicates_found': duplicates_found
+            }
         
-        db_conn.commit()
-        cursor.close()
-        
-        return {
-            'jobs_inserted': inserted_count,
-            'jobs_updated': updated_count,
-            'jobs_skipped': len(results) - inserted_count - updated_count - duplicates_found,
-            'duplicates_found': duplicates_found
-        }
+        # Insert only new jobs
+        try:
+            inserted_count = self._batch_insert_jobs(cursor, db_config, jobs_to_insert, self.config.table_name)
+            db_conn.commit()
+            
+            cursor.close()
+            return {
+                'jobs_inserted': inserted_count,
+                'jobs_updated': 0,
+                'jobs_skipped': len(results) - inserted_count,
+                'duplicates_found': duplicates_found
+            }
+            
+        except Exception as e:
+            db_conn.rollback()
+            cursor.close()
+            logger.error(f"Failed to insert jobs: {e}")
+            raise
     
     def _ensure_table_exists(self, cursor, db_config: DatabaseConfig, table_name: str):
         """Ensure target table exists with proper schema"""
