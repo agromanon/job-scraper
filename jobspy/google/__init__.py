@@ -126,6 +126,7 @@ class Google(Scraper):
         if self.scraper_input.country and self.scraper_input.country.name == "BRAZIL":
             params["jbr"] = "sep:0"
         
+        log.info(f"Google search params: {params}")
         response = self.session.get(self.url, headers=headers_initial, params=params)
 
         pattern_fc = r'<div jsname="Yust4d"[^>]+data-async-fc="([^"]+)"'

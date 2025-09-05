@@ -325,6 +325,8 @@ class ScrapingWorker:
                 else:
                     # Neither provided - use general Brazilian job search
                     google_search_term = "vagas"
+                
+                logger.info(f"Constructed Google search term: '{google_search_term}'")
             
             df = scrape_jobs(
                 site_name=[site_enum],
