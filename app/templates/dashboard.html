@@ -10,7 +10,10 @@
                 <h1 class="mb-0">Dashboard</h1>
                 <p class="text-muted mb-0">Job Scraping Worker Management System</p>
             </div>
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-2 align-items-center">
+                <div class="theme-switcher d-lg-none me-2" id="mobileThemeSwitcher" title="Toggle theme">
+                    <i class="bi bi-moon"></i>
+                </div>
                 <a href="{{ url_for('list_workers') }}" class="btn btn-primary">
                     <i class="bi bi-people me-1"></i>Manage Workers
                 </a>
@@ -269,5 +272,44 @@ function showNotification(message, type = 'info') {
         }
     }, 5000);
 }
+
+// Mobile theme switcher functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const mobileThemeSwitcher = document.getElementById('mobileThemeSwitcher');
+    
+    if (mobileThemeSwitcher) {
+        const mainThemeSwitcher = document.getElementById('themeSwitcher');
+        const themeIcon = mainThemeSwitcher.querySelector('i');
+        const mobileThemeIcon = mobileThemeSwitcher.querySelector('i');
+        
+        // Sync mobile theme switcher with main theme switcher
+        function syncThemeSwitchers() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            if (currentTheme === 'dark') {
+                mobileThemeIcon.classList.remove('bi-moon');
+                mobileThemeIcon.classList.add('bi-sun');
+            } else {
+                mobileThemeIcon.classList.remove('bi-sun');
+                mobileThemeIcon.classList.add('bi-moon');
+            }
+        }
+        
+        // Initial sync
+        syncThemeSwitchers();
+        
+        // Listen for theme changes on the main switcher
+        const observer = new MutationObserver(syncThemeSwitchers);
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['data-theme']
+        });
+        
+        // Toggle theme on mobile switcher click
+        mobileThemeSwitcher.addEventListener('click', function() {
+            // Trigger click on main theme switcher
+            mainThemeSwitcher.click();
+        });
+    }
+});
 </script>
 {% endblock %}

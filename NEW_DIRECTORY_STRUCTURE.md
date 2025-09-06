@@ -130,4 +130,10 @@ This document outlines the new directory structure for the JobSpy application af
    - Sidebar navigation adapts to different screen sizes
    - Tables and forms are optimized for mobile devices
 
+5. **Dark Mode Support:**
+   - Added theme switcher with moon/sun icons in sidebar and mobile header
+   - Implemented both light and dark color schemes
+   - Added system preference detection with localStorage persistence
+   - Ensured accessibility compliance in both themes
+
 This new directory structure provides a solid foundation for the enhanced UI/UX while maintaining the existing functionality of the JobSpy application.

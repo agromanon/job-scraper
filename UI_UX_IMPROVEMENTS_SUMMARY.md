@@ -152,15 +152,11 @@ We have successfully implemented a comprehensive UI/UX improvement plan for the 
    - Allow users to customize widget layout
    - Provide options to hide/show specific metrics
 
-3. **Dark Mode:**
-   - Implement dark theme option
-   - Add system preference detection
-
-4. **Advanced Filtering:**
+3. **Advanced Filtering:**
    - Add date range filtering
    - Implement multi-column sorting
 
-5. **Bulk Actions:**
+4. **Bulk Actions:**
    - Add bulk operation capabilities
    - Implement selection mechanisms
 
