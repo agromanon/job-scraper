@@ -564,7 +564,7 @@ def edit_worker(worker_id):
             form.schedule_minute_offset.data = worker['schedule_minute_offset']
             form.timezone.data = worker['timezone']
             form.proxy_rotation_policy.data = worker['proxy_rotation_policy']
-            form.use_webshare_proxies.data = worker['use_webshare_proxies']
+            form.use_webshare_proxies.data = worker.get('use_webshare_proxies', True)
             
             # Handle proxies array
             if worker['proxies']:
@@ -780,6 +780,7 @@ def execute_worker(worker_id):
             schedule_minute_offset=worker_record['schedule_minute_offset'],
             timezone=worker_record['timezone'],
             proxy_rotation_policy=worker_record['proxy_rotation_policy'],
+            use_webshare_proxies=worker_record.get('use_webshare_proxies', True),  # Default to True if column doesn't exist yet
             proxies=worker_record['proxies'] or [],
             max_retries=worker_record['max_retries'],
             timeout=worker_record['timeout'],
