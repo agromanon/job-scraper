@@ -566,42 +566,40 @@ def edit_worker(worker_id):
     """Edit existing worker"""
     try:
         # Get worker data
-        worker_data = execute_query("""
-            SELECT 
-                id, name, description, site, search_term, location, country, distance, job_type,
-                is_remote, easy_apply, linkedin_company_ids, hours_old, results_per_run, current_offset,
-                schedule_hours, schedule_minute_offset, timezone, proxy_rotation_policy, proxies,
-                max_retries, timeout, rate_limit_requests, rate_limit_seconds, description_format,
-                linkedin_fetch_description, database_id, table_name, status, memory_limit_mb,
-                cpu_limit_cores, max_runtime_minutes, max_consecutive_errors, auto_pause_on_errors, tags, 
-                next_run, last_run, last_success, last_error, consecutive_errors, created_at, updated_at
-            FROM scraping_workers WHERE id = %s
-        """, (worker_id,), fetch=True)
-        
-        # Check if use_webshare_proxies column exists and add it if it does
-        if worker_data:
-            # Get column names from the first row
-            first_row = worker_data[0]
-            
-            # Check if use_webshare_proxies column exists
-            if 'use_webshare_proxies' not in first_row:
-                # Column doesn't exist, try to fetch it separately
-                try:
-                    use_webshare_data = execute_query("""
-                        SELECT use_webshare_proxies 
-                        FROM scraping_workers 
-                        WHERE id = %s
-                    """, (worker_id,), fetch=True)
-                    
-                    if use_webshare_data:
-                        # Add the column data to each row
-                        for row in worker_data:
-                            row['use_webshare_proxies'] = use_webshare_data[0].get('use_webshare_proxies', True)
-                except Exception as e:
-                    # Column doesn't exist, default to True
+        try:
+            worker_data = execute_query("""
+                SELECT 
+                    id, name, description, site, search_term, location, country, distance, job_type,
+                    is_remote, easy_apply, linkedin_company_ids, hours_old, results_per_run, current_offset,
+                    schedule_hours, schedule_minute_offset, timezone, proxy_rotation_policy, use_webshare_proxies, proxies,
+                    max_retries, timeout, rate_limit_requests, rate_limit_seconds, description_format,
+                    linkedin_fetch_description, database_id, table_name, status, memory_limit_mb,
+                    cpu_limit_cores, max_runtime_minutes, max_consecutive_errors, auto_pause_on_errors, tags, 
+                    next_run, last_run, last_success, last_error, consecutive_errors, created_at, updated_at
+                FROM scraping_workers WHERE id = %s
+            """, (worker_id,), fetch=True)
+        except Exception as e:
+            # Handle case where use_webshare_proxies column doesn't exist yet
+            if "use_webshare_proxies" in str(e):
+                logger.warning("use_webshare_proxies column not found, fetching without it")
+                worker_data = execute_query("""
+                    SELECT 
+                        id, name, description, site, search_term, location, country, distance, job_type,
+                        is_remote, easy_apply, linkedin_company_ids, hours_old, results_per_run, current_offset,
+                        schedule_hours, schedule_minute_offset, timezone, proxy_rotation_policy, proxies,
+                        max_retries, timeout, rate_limit_requests, rate_limit_seconds, description_format,
+                        linkedin_fetch_description, database_id, table_name, status, memory_limit_mb,
+                        cpu_limit_cores, max_runtime_minutes, max_consecutive_errors, auto_pause_on_errors, tags, 
+                        next_run, last_run, last_success, last_error, consecutive_errors, created_at, updated_at
+                    FROM scraping_workers WHERE id = %s
+                """, (worker_id,), fetch=True)
+                
+                # Add default value for use_webshare_proxies to each row
+                if worker_data:
                     for row in worker_data:
                         row['use_webshare_proxies'] = True
-                        logger.warning(f"use_webshare_proxies column not found, defaulting to True: {e}")
+            else:
+                raise
         if not worker_data:
             flash('Worker not found', 'error')
             return redirect(url_for('list_workers'))
@@ -641,9 +639,12 @@ def edit_worker(worker_id):
             form.current_offset.data = worker['current_offset']
             form.schedule_hours.data = worker['schedule_hours']
             form.schedule_minute_offset.data = worker['schedule_minute_offset']
-            form.timezone.data = worker['timezone']
-            form.proxy_rotation_policy.data = worker['proxy_rotation_policy']
-            form.use_webshare_proxies.data = worker.get('use_webshare_proxies', True)
+            # Handle case where use_webshare_proxies column might not exist yet
+            if 'use_webshare_proxies' in worker:
+                form.use_webshare_proxies.data = worker['use_webshare_proxies']
+            else:
+                # Default to True for backward compatibility
+                form.use_webshare_proxies.data = True
             
             # Handle proxies array
             if worker['proxies']:
