@@ -898,7 +898,14 @@ class WorkerManager:
             
             workers = []
             for row in cursor.fetchall():
-                worker_config = WorkerConfig(**dict(row))
+                # Convert row to dict
+                row_dict = dict(row)
+                
+                # Handle case where use_webshare_proxies column might not exist
+                if 'use_webshare_proxies' not in row_dict:
+                    row_dict['use_webshare_proxies'] = True  # Default to True for backward compatibility
+                
+                worker_config = WorkerConfig(**row_dict)
                 workers.append(worker_config)
             
             cursor.close()
