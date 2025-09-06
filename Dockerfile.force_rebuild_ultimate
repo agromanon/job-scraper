@@ -86,7 +86,8 @@ EXPOSE 5000
 COPY job_status_checker.py /app/
 COPY fix_database.py /app/
 COPY startup.sh /app/
-RUN chmod +x /app/job_status_checker.py /app/fix_database.py /app/startup.sh
+COPY test_webshare_proxy.py /app/
+RUN chmod +x /app/job_status_checker.py /app/fix_database.py /app/startup.sh /app/test_webshare_proxy.py
 
 # Set up cron for job status checking (runs daily at 2 AM)
 RUN apt-get update && apt-get install -y cron
