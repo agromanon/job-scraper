@@ -269,6 +269,11 @@ a:hover {
 .card-body {
   flex: 1 1 auto;
   padding: var(--spacer-4);
+  background-color: var(--surface);
+}
+
+[data-theme="dark"] .card-body {
+  background-color: var(--surface);
 }
 
 .card-title {
@@ -719,10 +724,12 @@ a:hover {
   border-collapse: collapse;
   width: 100%;
   color: var(--secondary-800);
+  background-color: var(--surface);
 }
 
 [data-theme="dark"] .table {
   color: var(--secondary-200);
+  background-color: var(--surface);
 }
 
 .table th,
@@ -761,6 +768,17 @@ a:hover {
 
 [data-theme="dark"] .table-hover tbody tr:hover {
   background-color: var(--secondary-800);
+}
+
+/* Table container */
+.table-responsive {
+  background-color: var(--surface);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+[data-theme="dark"] .table-responsive {
+  background-color: var(--surface);
 }
 
 /* Navigation */
@@ -894,6 +912,11 @@ a:hover {
 
 .metric-card-header {
   padding: var(--spacer-4);
+  background-color: var(--surface);
+}
+
+[data-theme="dark"] .metric-card-header {
+  background-color: var(--surface);
 }
 
 .metric-card-title {
