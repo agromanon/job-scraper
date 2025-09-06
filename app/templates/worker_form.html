@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+
+{% block title %}{% if action == 'new' %}Create Worker{% else %}Edit Worker{% endif %} - Job Scraper Admin{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="mb-0">{% if action == 'new' %}Create New Worker{% else %}Edit Worker{% endif %}</h1>
+                <p class="text-muted mb-0">Configure job scraping parameters and schedule</p>
+            </div>
+            <a href="{{ url_for('list_workers') }}" class="btn btn-outline">
+                <i class="bi bi-arrow-left me-1"></i>Back to Workers
+            </a>
+        </div>
+        
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" class="needs-validation" novalidate>
+                    {{ form.hidden_tag() }}
+                    
+                    <!-- Basic Information -->
+                    <div class="accordion mb-4" id="workerFormAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="basicInfoHeading">
+                                <button class="accordion-button fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#basicInfoCollapse" aria-expanded="true" aria-controls="basicInfoCollapse">
+                                    <i class="bi bi-info-circle me-2 text-primary"></i>
+                                    Basic Information
+                                </button>
+                            </h2>
+                            <div id="basicInfoCollapse" class="accordion-collapse collapse show" aria-labelledby="basicInfoHeading" data-bs-parent="#workerFormAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            {{ form.name.label(class="form-label fw-semibold") }}
+                                            {{ form.name(class="form-control") }}
+                                            {% if form.name.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.name.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">Unique name for this worker</div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            {{ form.site.label(class="form-label fw-semibold") }}
+                                            {{ form.site(class="form-select") }}
+                                            {% if form.site.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.site.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-12 mb-3">
+                                            {{ form.description.label(class="form-label fw-semibold") }}
+                                            {{ form.description(class="form-control", rows="3") }}
+                                            {% if form.description.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.description.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">Optional description of this worker's purpose</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Search Configuration -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="searchConfigHeading">
+                                <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#searchConfigCollapse" aria-expanded="false" aria-controls="searchConfigCollapse">
+                                    <i class="bi bi-search me-2 text-primary"></i>
+                                    Search Configuration
+                                </button>
+                            </h2>
+                            <div id="searchConfigCollapse" class="accordion-collapse collapse" aria-labelledby="searchConfigHeading" data-bs-parent="#workerFormAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            {{ form.search_term.label(class="form-label fw-semibold") }}
+                                            {{ form.search_term(class="form-control") }}
+                                            {% if form.search_term.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.search_term.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">Keywords to search for (e.g., "software engineer")</div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            {{ form.location.label(class="form-label fw-semibold") }}
+                                            {{ form.location(class="form-control") }}
+                                            {% if form.location.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.location.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">Location to search in (e.g., "San Francisco, CA")</div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            {{ form.country.label(class="form-label fw-semibold") }}
+                                            {{ form.country(class="form-control") }}
+                                            {% if form.country.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.country.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            {{ form.distance.label(class="form-label fw-semibold") }}
+                                            {{ form.distance(class="form-control") }}
+                                            {% if form.distance.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.distance.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">Search radius in miles</div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            {{ form.hours_old.label(class="form-label fw-semibold") }}
+                                            {{ form.hours_old(class="form-control") }}
+                                            {% if form.hours_old.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.hours_old.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">Only show jobs posted within X hours</div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            {{ form.results_per_run.label(class="form-label fw-semibold") }}
+                                            {{ form.results_per_run(class="form-control") }}
+                                            <div class="form-text">Number of job results to retrieve per run (default: 50)</div>
+                                            {% if form.results_per_run.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.results_per_run.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- LinkedIn Settings -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="linkedinSettingsHeading">
+                                <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#linkedinSettingsCollapse" aria-expanded="false" aria-controls="linkedinSettingsCollapse">
+                                    <i class="bi bi-linkedin me-2 text-primary"></i>
+                                    LinkedIn Settings
+                                </button>
+                            </h2>
+                            <div id="linkedinSettingsCollapse" class="accordion-collapse collapse" aria-labelledby="linkedinSettingsHeading" data-bs-parent="#workerFormAccordion">
+                                <div class="accordion-body">
+                                    <div class="col-md-12 mb-3">
+                                        <div class="form-check">
+                                            {{ form.linkedin_fetch_description(class="form-check-input") }}
+                                            {{ form.linkedin_fetch_description.label(class="form-check-label fw-semibold") }}
+                                            <div class="form-text">Enable detailed job descriptions for LinkedIn jobs (recommended for better data quality)</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Database Configuration -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="databaseConfigHeading">
+                                <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#databaseConfigCollapse" aria-expanded="false" aria-controls="databaseConfigCollapse">
+                                    <i class="bi bi-database me-2 text-primary"></i>
+                                    Database Configuration
+                                </button>
+                            </h2>
+                            <div id="databaseConfigCollapse" class="accordion-collapse collapse" aria-labelledby="databaseConfigHeading" data-bs-parent="#workerFormAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            {{ form.database_id.label(class="form-label fw-semibold") }}
+                                            {{ form.database_id(class="form-select") }}
+                                            {% if form.database_id.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.database_id.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            {{ form.table_name.label(class="form-label fw-semibold") }}
+                                            {{ form.table_name(class="form-control") }}
+                                            {% if form.table_name.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.table_name.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Scheduling -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="schedulingHeading">
+                                <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#schedulingCollapse" aria-expanded="false" aria-controls="schedulingCollapse">
+                                    <i class="bi bi-clock me-2 text-primary"></i>
+                                    Scheduling
+                                </button>
+                            </h2>
+                            <div id="schedulingCollapse" class="accordion-collapse collapse" aria-labelledby="schedulingHeading" data-bs-parent="#workerFormAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            {{ form.schedule_hours.label(class="form-label fw-semibold") }}
+                                            {{ form.schedule_hours(class="form-control") }}
+                                            {% if form.schedule_hours.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.schedule_hours.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">How often to run (hours)</div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            {{ form.schedule_minute_offset.label(class="form-label fw-semibold") }}
+                                            {{ form.schedule_minute_offset(class="form-control") }}
+                                            {% if form.schedule_minute_offset.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.schedule_minute_offset.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">Minute offset for staggered execution</div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            {{ form.timezone.label(class="form-label fw-semibold") }}
+                                            {{ form.timezone(class="form-select") }}
+                                            {% if form.timezone.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.timezone.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            {{ form.status.label(class="form-label fw-semibold") }}
+                                            {{ form.status(class="form-select") }}
+                                            {% if form.status.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.status.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Resource Limits -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="resourceLimitsHeading">
+                                <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#resourceLimitsCollapse" aria-expanded="false" aria-controls="resourceLimitsCollapse">
+                                    <i class="bi bi-speedometer2 me-2 text-primary"></i>
+                                    Resource Limits
+                                </button>
+                            </h2>
+                            <div id="resourceLimitsCollapse" class="accordion-collapse collapse" aria-labelledby="resourceLimitsHeading" data-bs-parent="#workerFormAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            {{ form.memory_limit_mb.label(class="form-label fw-semibold") }}
+                                            {{ form.memory_limit_mb(class="form-control") }}
+                                            {% if form.memory_limit_mb.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.memory_limit_mb.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">Memory limit in MB</div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            {{ form.cpu_limit_cores.label(class="form-label fw-semibold") }}
+                                            {{ form.cpu_limit_cores(class="form-control") }}
+                                            {% if form.cpu_limit_cores.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.cpu_limit_cores.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">CPU limit in cores</div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            {{ form.max_runtime_minutes.label(class="form-label fw-semibold") }}
+                                            {{ form.max_runtime_minutes(class="form-control") }}
+                                            {% if form.max_runtime_minutes.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.max_runtime_minutes.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">Maximum runtime in minutes</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Advanced Settings -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="advancedSettingsHeading">
+                                <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#advancedSettingsCollapse" aria-expanded="false" aria-controls="advancedSettingsCollapse">
+                                    <i class="bi bi-gear me-2 text-primary"></i>
+                                    Advanced Settings
+                                </button>
+                            </h2>
+                            <div id="advancedSettingsCollapse" class="accordion-collapse collapse" aria-labelledby="advancedSettingsHeading" data-bs-parent="#workerFormAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            {{ form.tags.label(class="form-label fw-semibold") }}
+                                            {{ form.tags(class="form-control", placeholder="comma-separated tags") }}
+                                            {% if form.tags.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.tags.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">Tags for categorization and filtering</div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            {{ form.proxy_rotation_policy.label(class="form-label fw-semibold") }}
+                                            {{ form.proxy_rotation_policy(class="form-select") }}
+                                            {% if form.proxy_rotation_policy.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.proxy_rotation_policy.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-12 mb-3">
+                                            {{ form.proxies.label(class="form-label fw-semibold") }}
+                                            {{ form.proxies(class="form-control", rows="4", placeholder="Enter one proxy per line in format: user:pass@host:port") }}
+                                            <div class="form-text">
+                                                Enter one proxy per line. Format: user:pass@host:port or host:port<br>
+                                                <strong>Webshare.io Integration:</strong> Set WEBSHARE_USERNAME and WEBSHARE_PASSWORD environment variables for automatic proxy management<br>
+                                                <strong>Example Webshare URL:</strong> http://username:password@p.webshare.io:80/
+                                            </div>
+                                            {% if form.proxies.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.proxies.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        {{ form.submit(class="btn btn-primary") }}
+                        <a href="{{ url_for('list_workers') }}" class="btn btn-outline">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

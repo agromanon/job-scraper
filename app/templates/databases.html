@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Databases - Job Scraper Admin{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="mb-0">Databases</h1>
+                <p class="text-muted mb-0">Manage your database connections</p>
+            </div>
+            <a href="{{ url_for('new_database') }}" class="btn btn-primary">
+                <i class="bi bi-database-add me-1"></i>Add Database
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Databases Filters -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Search</label>
+                        <input type="text" class="form-control" id="databaseSearch" placeholder="Search databases...">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="statusFilter">
+                            <option value="">All Statuses</option>
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button class="btn btn-outline w-100" id="clearFilters">
+                            <i class="bi bi-x-circle me-1"></i>Clear Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Databases List -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                {% if databases %}
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="databasesTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Host</th>
+                                    <th>Database</th>
+                                    <th>Status</th>
+                                    <th>Workers</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for db in databases %}
+                                    <tr class="database-row" 
+                                        data-name="{{ db.name.lower() }}" 
+                                        data-status="{{ db.is_active }}">
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-database text-primary me-2"></i>
+                                                <div>
+                                                    <strong>{{ db.name }}</strong>
+                                                    {% if db.description %}
+                                                        <small class="text-muted d-block">{{ db.description }}</small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ db.host }}:{{ db.port }}</small>
+                                        </td>
+                                        <td>
+                                            <code>{{ db.database_name }}</code>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if db.is_active else 'secondary' }}">
+                                                {{ 'Active' if db.is_active else 'Inactive' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ db.worker_count or 0 }}</span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('edit_database', database_id=db.id) }}" class="btn btn-sm btn-outline" title="Edit">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <a href="{{ url_for('test_database', database_id=db.id) }}" class="btn btn-sm btn-outline-info"
+                                                   onclick="event.preventDefault(); testDatabase({{ db.id }}); return false;" title="Test Connection">
+                                                    <i class="bi bi-wifi"></i>
+                                                </a>
+                                                <a href="{{ url_for('delete_database', database_id=db.id) }}" class="btn btn-sm btn-outline-danger"
+                                                   onclick="return confirm('Are you sure you want to delete this database?');" title="Delete">
+                                                    <i class="bi bi-trash"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-database text-muted" style="font-size: 3rem;"></i>
+                        <h4 class="mt-3">No Databases Found</h4>
+                        <p class="text-muted">Add your first database to store scraped job listings</p>
+                        <a href="{{ url_for('new_database') }}" class="btn btn-primary">
+                            <i class="bi bi-database-add me-1"></i>Add First Database
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Database filtering functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('databaseSearch');
+    const statusFilter = document.getElementById('statusFilter');
+    const clearFiltersBtn = document.getElementById('clearFilters');
+    const databaseRows = document.querySelectorAll('.database-row');
+    
+    function filterDatabases() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const statusValue = statusFilter.value;
+        
+        databaseRows.forEach(row => {
+            const name = row.getAttribute('data-name');
+            const status = row.getAttribute('data-status');
+            
+            const matchesSearch = name.includes(searchTerm);
+            const matchesStatus = !statusValue || status === statusValue;
+            
+            if (matchesSearch && matchesStatus) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+    
+    // Attach event listeners
+    searchInput.addEventListener('input', filterDatabases);
+    statusFilter.addEventListener('change', filterDatabases);
+    
+    // Clear filters
+    clearFiltersBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        statusFilter.value = '';
+        filterDatabases();
+    });
+});
+
+// Test database connection
+function testDatabase(databaseId) {
+    // Show loading state
+    const testButton = event.target.closest('a');
+    const originalHTML = testButton.innerHTML;
+    testButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+    testButton.classList.add('disabled');
+    
+    fetch(`/api/databases/${databaseId}/test`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Database connection successful!');
+            } else {
+                alert(`Database connection failed: ${data.error}`);
+            }
+        })
+        .catch(error => {
+            alert('Error testing database connection');
+        })
+        .finally(() => {
+            // Restore button state
+            testButton.innerHTML = originalHTML;
+            testButton.classList.remove('disabled');
+        });
+}
+</script>
+{% endblock %}

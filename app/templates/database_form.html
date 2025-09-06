@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block title %}{% if action == 'new' %}Create Database{% else %}Edit Database{% endif %} - Job Scraper Admin{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="mb-0">{% if action == 'new' %}Create New Database{% else %}Edit Database{% endif %}</h1>
+                <p class="text-muted mb-0">Configure database connection settings</p>
+            </div>
+            <a href="{{ url_for('list_databases') }}" class="btn btn-outline">
+                <i class="bi bi-arrow-left me-1"></i>Back to Databases
+            </a>
+        </div>
+        
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" class="needs-validation" novalidate>
+                    {{ form.hidden_tag() }}
+                    
+                    <!-- Basic Information -->
+                    <div class="accordion mb-4" id="databaseFormAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="basicInfoHeading">
+                                <button class="accordion-button fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#basicInfoCollapse" aria-expanded="true" aria-controls="basicInfoCollapse">
+                                    <i class="bi bi-info-circle me-2 text-primary"></i>
+                                    Basic Information
+                                </button>
+                            </h2>
+                            <div id="basicInfoCollapse" class="accordion-collapse collapse show" aria-labelledby="basicInfoHeading" data-bs-parent="#databaseFormAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            {{ form.name.label(class="form-label fw-semibold") }}
+                                            {{ form.name(class="form-control") }}
+                                            {% if form.name.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.name.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">Unique name for this database connection</div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <div class="form-check mt-4">
+                                                {{ form.is_active(class="form-check-input") }}
+                                                {{ form.is_active.label(class="form-check-label fw-semibold") }}
+                                                {% if form.is_active.errors %}
+                                                    <div class="text-danger small mt-1">
+                                                        {% for error in form.is_active.errors %}
+                                                            <div>{{ error }}</div>
+                                                        {% endfor %}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-12 mb-3">
+                                            {{ form.description.label(class="form-label fw-semibold") }}
+                                            {{ form.description(class="form-control", rows="3") }}
+                                            {% if form.description.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.description.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">Optional description of this database connection</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Connection Details -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="connectionDetailsHeading">
+                                <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#connectionDetailsCollapse" aria-expanded="false" aria-controls="connectionDetailsCollapse">
+                                    <i class="bi bi-plug me-2 text-primary"></i>
+                                    Connection Details
+                                </button>
+                            </h2>
+                            <div id="connectionDetailsCollapse" class="accordion-collapse collapse" aria-labelledby="connectionDetailsHeading" data-bs-parent="#databaseFormAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            {{ form.host.label(class="form-label fw-semibold") }}
+                                            {{ form.host(class="form-control") }}
+                                            {% if form.host.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.host.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-3 mb-3">
+                                            {{ form.port.label(class="form-label fw-semibold") }}
+                                            {{ form.port(class="form-control") }}
+                                            {% if form.port.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.port.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-3 mb-3">
+                                            {{ form.ssl_mode.label(class="form-label fw-semibold") }}
+                                            {{ form.ssl_mode(class="form-select") }}
+                                            {% if form.ssl_mode.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.ssl_mode.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            {{ form.database_name.label(class="form-label fw-semibold") }}
+                                            {{ form.database_name(class="form-control") }}
+                                            {% if form.database_name.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.database_name.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            {{ form.username.label(class="form-label fw-semibold") }}
+                                            {{ form.username(class="form-control") }}
+                                            {% if form.username.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.username.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            {{ form.password.label(class="form-label fw-semibold") }}
+                                            {{ form.password(class="form-control") }}
+                                            {% if form.password.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.password.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Performance Settings -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="performanceSettingsHeading">
+                                <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#performanceSettingsCollapse" aria-expanded="false" aria-controls="performanceSettingsCollapse">
+                                    <i class="bi bi-speedometer2 me-2 text-primary"></i>
+                                    Performance Settings
+                                </button>
+                            </h2>
+                            <div id="performanceSettingsCollapse" class="accordion-collapse collapse" aria-labelledby="performanceSettingsHeading" data-bs-parent="#databaseFormAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            {{ form.connection_pool_size.label(class="form-label fw-semibold") }}
+                                            {{ form.connection_pool_size(class="form-control") }}
+                                            {% if form.connection_pool_size.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.connection_pool_size.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            {{ form.max_connections.label(class="form-label fw-semibold") }}
+                                            {{ form.max_connections(class="form-control") }}
+                                            {% if form.max_connections.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.max_connections.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            {{ form.connection_timeout_seconds.label(class="form-label fw-semibold") }}
+                                            {{ form.connection_timeout_seconds(class="form-control") }}
+                                            {% if form.connection_timeout_seconds.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.connection_timeout_seconds.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            {{ form.batch_size.label(class="form-label fw-semibold") }}
+                                            {{ form.batch_size(class="form-control") }}
+                                            {% if form.batch_size.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.batch_size.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            {{ form.deduplication_method.label(class="form-label fw-semibold") }}
+                                            {{ form.deduplication_method(class="form-select") }}
+                                            {% if form.deduplication_method.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.deduplication_method.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            {{ form.target_table_prefix.label(class="form-label fw-semibold") }}
+                                            {{ form.target_table_prefix(class="form-control") }}
+                                            {% if form.target_table_prefix.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.target_table_prefix.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Additional Settings -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="additionalSettingsHeading">
+                                <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#additionalSettingsCollapse" aria-expanded="false" aria-controls="additionalSettingsCollapse">
+                                    <i class="bi bi-gear me-2 text-primary"></i>
+                                    Additional Settings
+                                </button>
+                            </h2>
+                            <div id="additionalSettingsCollapse" class="accordion-collapse collapse" aria-labelledby="additionalSettingsHeading" data-bs-parent="#databaseFormAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            {{ form.tags.label(class="form-label fw-semibold") }}
+                                            {{ form.tags(class="form-control", placeholder="comma-separated tags") }}
+                                            {% if form.tags.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.tags.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        {{ form.submit(class="btn btn-primary") }}
+                        <a href="{{ url_for('list_databases') }}" class="btn btn-outline">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

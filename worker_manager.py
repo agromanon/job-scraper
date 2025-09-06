@@ -287,7 +287,7 @@ class ScrapingWorker:
             
             elif site_enum == Site.GOOGLE:
                 # For Google jobs, construct the search term properly for Brazilian market
-                # Based on successful manual search: "vagas google São Paulo, SP"
+                # Based on successful manual search patterns
                 location = self.config.location
                 
                 # Handle Brazilian location formatting
@@ -311,19 +311,19 @@ class ScrapingWorker:
                 else:
                     formatted_location = None
                 
-                # Handle different combinations of search term and location for Brazil
+                # Try different search strategies for better results
                 if search_term and formatted_location:
-                    # Both search term and location provided - use Brazilian format
-                    # Format: "vagas {search_term} {location}"
+                    # Try multiple formats to see what works
+                    # Format 1: "vagas {search_term} {location}" 
                     google_search_term = f"vagas {search_term} {formatted_location}"
                 elif search_term:
-                    # Only search term provided
+                    # Just search term: "vagas {search_term}"
                     google_search_term = f"vagas {search_term}"
                 elif formatted_location:
-                    # Only location provided
+                    # Just location: "vagas {location}" (most likely to return results)
                     google_search_term = f"vagas {formatted_location}"
                 else:
-                    # Neither provided - use general Brazilian job search
+                    # Fallback: general job search
                     google_search_term = "vagas"
                 
                 logger.info(f"Constructed Google search term: '{google_search_term}'")
