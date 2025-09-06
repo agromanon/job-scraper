@@ -437,19 +437,140 @@ a:hover {
   font-size: 1.1rem;
 }
 
+/* Action Buttons - Redesigned for better UX */
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--border-radius);
+  border: var(--border-width) solid var(--secondary-300);
+  background-color: var(--surface);
+  color: var(--secondary-600);
+  transition: all var(--transition-fast);
+  text-decoration: none;
+  padding: 0;
+}
+
+.action-btn:hover:not(:disabled) {
+  background-color: var(--secondary-50);
+  border-color: var(--secondary-400);
+  color: var(--secondary-800);
+  transform: translateY(-1px);
+}
+
+.action-btn:focus:not(:disabled) {
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.5);
+  outline: none;
+}
+
+.action-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+[data-theme="dark"] .action-btn {
+  border-color: var(--secondary-600);
+  background-color: var(--surface);
+  color: var(--secondary-300);
+}
+
+[data-theme="dark"] .action-btn:hover:not(:disabled) {
+  background-color: var(--secondary-800);
+  border-color: var(--secondary-500);
+  color: var(--secondary-100);
+}
+
+/* Specific action button variants */
+.action-btn-edit {
+  color: var(--primary-600);
+}
+
+.action-btn-edit:hover:not(:disabled) {
+  background-color: var(--primary-50);
+  border-color: var(--primary-300);
+  color: var(--primary-700);
+}
+
+[data-theme="dark"] .action-btn-edit {
+  color: var(--primary-400);
+}
+
+[data-theme="dark"] .action-btn-edit:hover:not(:disabled) {
+  background-color: var(--primary-900);
+  border-color: var(--primary-700);
+  color: var(--primary-300);
+}
+
+.action-btn-toggle {
+  color: var(--warning-600);
+}
+
+.action-btn-toggle:hover:not(:disabled) {
+  background-color: var(--warning-50);
+  border-color: var(--warning-300);
+  color: var(--warning-700);
+}
+
+[data-theme="dark"] .action-btn-toggle {
+  color: var(--warning-400);
+}
+
+[data-theme="dark"] .action-btn-toggle:hover:not(:disabled) {
+  background-color: var(--warning-900);
+  border-color: var(--warning-700);
+  color: var(--warning-300);
+}
+
+.action-btn-execute {
+  color: var(--success-600);
+}
+
+.action-btn-execute:hover:not(:disabled) {
+  background-color: var(--success-50);
+  border-color: var(--success-300);
+  color: var(--success-700);
+}
+
+[data-theme="dark"] .action-btn-execute {
+  color: var(--success-400);
+}
+
+[data-theme="dark"] .action-btn-execute:hover:not(:disabled) {
+  background-color: var(--success-900);
+  border-color: var(--success-700);
+  color: var(--success-300);
+}
+
+.action-btn-delete {
+  color: var(--danger-600);
+}
+
+.action-btn-delete:hover:not(:disabled) {
+  background-color: var(--danger-50);
+  border-color: var(--danger-300);
+  color: var(--danger-700);
+}
+
+[data-theme="dark"] .action-btn-delete {
+  color: var(--danger-400);
+}
+
+[data-theme="dark"] .action-btn-delete:hover:not(:disabled) {
+  background-color: var(--danger-900);
+  border-color: var(--danger-700);
+  color: var(--danger-300);
+}
+
 /* Action button group */
-.btn-group .btn {
-  border-radius: 0;
+.action-btn-group {
+  display: flex;
+  gap: var(--spacer-1);
 }
 
-.btn-group .btn:first-child {
-  border-top-left-radius: var(--border-radius);
-  border-bottom-left-radius: var(--border-radius);
-}
-
-.btn-group .btn:last-child {
-  border-top-right-radius: var(--border-radius);
-  border-bottom-right-radius: var(--border-radius);
+/* Action button group for tables */
+.table .action-btn-group {
+  justify-content: flex-end;
 }
 
 /* Ensure consistent button styling in dark mode */
