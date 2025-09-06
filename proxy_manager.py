@@ -57,6 +57,16 @@ class ProxyConfig:
     rotation_enabled = True
     health_check_enabled = True
 
+@dataclass
+class WebshareProxy:
+    """Represents a Webshare proxy from the API"""
+    username: str
+    password: str
+    proxy_address: str
+    port: int
+    valid: bool
+    last_verification: datetime
+
 class ProxyManager:
     """Manages proxy services and automatic rotation"""
     
@@ -65,6 +75,7 @@ class ProxyManager:
         self.proxy_pool = []
         self.last_refresh = datetime.min
         self.refresh_interval = 300  # 5 minutes
+        self.current_proxy_index = 0
     
     def add_webshare_config(self, username=None, password=None, 
                           api_key=None,
@@ -92,6 +103,107 @@ class ProxyManager:
         else:
             if logger:
                 logger.info(f"Added Webshare.io proxy config: {username}@{proxy_host}:{proxy_port}")
+    
+    def _fetch_webshare_proxies(self):
+        """Fetch proxy list from Webshare API"""
+        if not REQUESTS_AVAILABLE:
+            return []
+            
+        if 'webshare' not in self.proxy_configs:
+            return []
+            
+        config = self.proxy_configs['webshare']
+        
+        if not config.api_key:
+            return []
+            
+        try:
+            # Webshare API endpoint for listing proxies
+            url = "https://proxy.webshare.io/api/v2/proxy/list/"
+            
+            # Headers with API token authentication
+            headers = {
+                "Authorization": f"Token {config.api_key}"
+            }
+            
+            # Parameters for the request
+            params = {
+                "page_size": 100,  # Fetch up to 100 proxies
+                "page": 1
+            }
+            
+            if logger:
+                logger.info("Fetching proxies from Webshare API")
+                
+            response = requests.get(url, headers=headers, params=params, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                proxies = []
+                
+                for proxy_data in data.get('results', []):
+                    proxy = WebshareProxy(
+                        username=proxy_data.get('username', ''),
+                        password=proxy_data.get('password', ''),
+                        proxy_address=proxy_data.get('proxy_address', ''),
+                        port=proxy_data.get('port', 80),
+                        valid=proxy_data.get('valid', False),
+                        last_verification=datetime.fromisoformat(proxy_data.get('last_verification', '').replace('Z', '+00:00')) if proxy_data.get('last_verification') else datetime.now()
+                    )
+                    proxies.append(proxy)
+                
+                if logger:
+                    logger.info(f"Successfully fetched {len(proxies)} proxies from Webshare API")
+                
+                return proxies
+            else:
+                if logger:
+                    logger.error(f"Failed to fetch proxies from Webshare API. Status code: {response.status_code}, Response: {response.text}")
+                return []
+                
+        except Exception as e:
+            if logger:
+                logger.error(f"Error fetching proxies from Webshare API: {e}")
+            return []
+    
+    def refresh_proxy_pool(self):
+        """Refresh the proxy pool by fetching new proxies from Webshare API"""
+        if not REQUESTS_AVAILABLE:
+            return
+            
+        if 'webshare' not in self.proxy_configs:
+            return
+            
+        # Only refresh if enough time has passed
+        if datetime.now() - self.last_refresh < timedelta(seconds=self.refresh_interval):
+            return
+            
+        try:
+            proxies = self._fetch_webshare_proxies()
+            if proxies:
+                self.proxy_pool = proxies
+                self.last_refresh = datetime.now()
+                self.current_proxy_index = 0
+                
+                if logger:
+                    logger.info(f"Refreshed proxy pool with {len(proxies)} proxies")
+        except Exception as e:
+            if logger:
+                logger.error(f"Error refreshing proxy pool: {e}")
+    
+    def get_next_proxy(self):
+        """Get the next proxy from the pool for rotation"""
+        if not self.proxy_pool:
+            self.refresh_proxy_pool()
+            
+        if not self.proxy_pool:
+            return None
+            
+        # Get the next proxy in rotation
+        proxy = self.proxy_pool[self.current_proxy_index]
+        self.current_proxy_index = (self.current_proxy_index + 1) % len(self.proxy_pool)
+        
+        return proxy
     
     def get_rotating_proxy(self):
         """Get a rotating proxy URL for Webshare.io"""

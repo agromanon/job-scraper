@@ -181,6 +181,9 @@ class ScrapingWorker:
             if webshare_api_key:
                 try:
                     initialize_webshare_proxy(api_key=webshare_api_key)
+                    # Refresh proxy pool to fetch actual proxies from Webshare API
+                    if proxy_manager:
+                        proxy_manager.refresh_proxy_pool()
                     logger.info("Initialized Webshare.io proxy service with API key")
                 except Exception as e:
                     logger.warning(f"Failed to initialize Webshare.io proxy with API key: {e}")
@@ -370,6 +373,20 @@ class ScrapingWorker:
         # First try Webshare.io rotating proxy
         if _proxy_manager_available and proxy_manager:
             try:
+                # Try to get individual proxies from Webshare API first
+                if hasattr(proxy_manager, 'get_next_proxy') and callable(getattr(proxy_manager, 'get_next_proxy')):
+                    webshare_proxy = proxy_manager.get_next_proxy()
+                    if webshare_proxy:
+                        # Create proxy dictionary with individual proxy credentials
+                        proxy_url = f"http://{webshare_proxy.username}:{webshare_proxy.password}@{webshare_proxy.proxy_address}:{webshare_proxy.port}/"
+                        proxy_dict = {
+                            "http": proxy_url,
+                            "https": proxy_url
+                        }
+                        logger.info(f"Using individual Webshare.io proxy: {webshare_proxy.proxy_address}:{webshare_proxy.port}")
+                        return proxy_dict
+                
+                # Fallback to rotating proxy
                 webshare_proxies = proxy_manager.get_proxy_dict()
                 if webshare_proxies:
                     logger.info("Using Webshare.io rotating proxy")
