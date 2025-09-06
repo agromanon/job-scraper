@@ -72,6 +72,7 @@ class WorkerConfig:
     schedule_minute_offset: int
     timezone: str
     proxy_rotation_policy: str
+    use_webshare_proxies: bool
     proxies: List[str]
     max_retries: int
     timeout: int
@@ -370,29 +371,35 @@ class ScrapingWorker:
     
     def _get_proxies(self):
         """Get proxies for scraping - prioritize Webshare.io, fallback to configured proxies"""
-        # First try Webshare.io rotating proxy
-        if _proxy_manager_available and proxy_manager:
-            try:
-                # Try to get individual proxies from Webshare API first
-                if hasattr(proxy_manager, 'get_next_proxy') and callable(getattr(proxy_manager, 'get_next_proxy')):
-                    webshare_proxy = proxy_manager.get_next_proxy()
-                    if webshare_proxy:
-                        # Create proxy dictionary with individual proxy credentials
-                        proxy_url = f"http://{webshare_proxy.username}:{webshare_proxy.password}@{webshare_proxy.proxy_address}:{webshare_proxy.port}/"
-                        proxy_dict = {
-                            "http": proxy_url,
-                            "https": proxy_url
-                        }
-                        logger.info(f"Using individual Webshare.io proxy: {webshare_proxy.proxy_address}:{webshare_proxy.port}")
-                        return proxy_dict
-                
-                # Fallback to rotating proxy
-                webshare_proxies = proxy_manager.get_proxy_dict()
-                if webshare_proxies:
-                    logger.info("Using Webshare.io rotating proxy")
-                    return webshare_proxies
-            except Exception as e:
-                logger.warning(f"Failed to get Webshare.io proxies: {e}")
+        # First check if Webshare proxies are enabled for this worker
+        # Handle case where use_webshare_proxies might not exist in older database installations
+        use_webshare = getattr(self.config, 'use_webshare_proxies', True)
+        if not use_webshare:
+            logger.info("Webshare proxies disabled for this worker, skipping Webshare integration")
+        else:
+            # Try Webshare.io rotating proxy
+            if _proxy_manager_available and proxy_manager:
+                try:
+                    # Try to get individual proxies from Webshare API first
+                    if hasattr(proxy_manager, 'get_next_proxy') and callable(getattr(proxy_manager, 'get_next_proxy')):
+                        webshare_proxy = proxy_manager.get_next_proxy()
+                        if webshare_proxy:
+                            # Create proxy dictionary with individual proxy credentials
+                            proxy_url = f"http://{webshare_proxy.username}:{webshare_proxy.password}@{webshare_proxy.proxy_address}:{webshare_proxy.port}/"
+                            proxy_dict = {
+                                "http": proxy_url,
+                                "https": proxy_url
+                            }
+                            logger.info(f"Using individual Webshare.io proxy: {webshare_proxy.proxy_address}:{webshare_proxy.port}")
+                            return proxy_dict
+                    
+                    # Fallback to rotating proxy
+                    webshare_proxies = proxy_manager.get_proxy_dict()
+                    if webshare_proxies:
+                        logger.info("Using Webshare.io rotating proxy")
+                        return webshare_proxies
+                except Exception as e:
+                    logger.warning(f"Failed to get Webshare.io proxies: {e}")
         
         # Fallback to configured proxies
         if self.config.proxies:

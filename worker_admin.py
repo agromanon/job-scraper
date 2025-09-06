@@ -114,6 +114,8 @@ class WorkerForm(FlaskForm):
         ('none', 'None')
     ], default='rotating', validators=[DataRequired()])
     
+    use_webshare_proxies = BooleanField('Use Webshare Proxies', default=True)
+    
     proxies = TextAreaField('Proxy URLs (one per line)', validators=[Optional()])
     max_retries = IntegerField('Max Retries', default=3, validators=[NumberRange(min=0, max=10)])
     timeout = IntegerField('Timeout (seconds)', default=30, validators=[NumberRange(min=10, max=300)])
@@ -438,12 +440,12 @@ def new_worker():
                 INSERT INTO scraping_workers (
                     name, description, site, search_term, location, country, distance, job_type,
                     is_remote, easy_apply, linkedin_company_ids, hours_old, results_per_run, current_offset,
-                    schedule_hours, schedule_minute_offset, timezone, proxy_rotation_policy, proxies,
+                    schedule_hours, schedule_minute_offset, timezone, proxy_rotation_policy, use_webshare_proxies, proxies,
                     max_retries, timeout, rate_limit_requests, rate_limit_seconds, description_format,
                     linkedin_fetch_description, database_id, table_name, memory_limit_mb,
                     cpu_limit_cores, max_runtime_minutes, max_consecutive_errors, status, auto_pause_on_errors, tags,
                     next_run
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 form.name.data,
                 form.description.data,
@@ -463,6 +465,7 @@ def new_worker():
                 schedule_minute_offset,
                 timezone,
                 form.proxy_rotation_policy.data,
+                form.use_webshare_proxies.data,
                 proxies,
                 form.max_retries.data,
                 form.timeout.data,
@@ -513,7 +516,7 @@ def edit_worker(worker_id):
             SELECT 
                 id, name, description, site, search_term, location, country, distance, job_type,
                 is_remote, easy_apply, linkedin_company_ids, hours_old, results_per_run, current_offset,
-                schedule_hours, schedule_minute_offset, timezone, proxy_rotation_policy, proxies,
+                schedule_hours, schedule_minute_offset, timezone, proxy_rotation_policy, use_webshare_proxies, proxies,
                 max_retries, timeout, rate_limit_requests, rate_limit_seconds, description_format,
                 linkedin_fetch_description, database_id, table_name, status, memory_limit_mb,
                 cpu_limit_cores, max_runtime_minutes, max_consecutive_errors, auto_pause_on_errors, tags, 
@@ -561,6 +564,7 @@ def edit_worker(worker_id):
             form.schedule_minute_offset.data = worker['schedule_minute_offset']
             form.timezone.data = worker['timezone']
             form.proxy_rotation_policy.data = worker['proxy_rotation_policy']
+            form.use_webshare_proxies.data = worker['use_webshare_proxies']
             
             # Handle proxies array
             if worker['proxies']:
@@ -616,7 +620,7 @@ def edit_worker(worker_id):
                         name = %s, description = %s, site = %s, search_term = %s, location = %s,
                         country = %s, distance = %s, job_type = %s, is_remote = %s, easy_apply = %s,
                         linkedin_company_ids = %s, hours_old = %s, results_per_run = %s, current_offset = %s, schedule_hours = %s,
-                        schedule_minute_offset = %s, timezone = %s, proxy_rotation_policy = %s, proxies = %s,
+                        schedule_minute_offset = %s, timezone = %s, proxy_rotation_policy = %s, use_webshare_proxies = %s, proxies = %s,
                         max_retries = %s, timeout = %s, rate_limit_requests = %s, rate_limit_seconds = %s,
                         description_format = %s, linkedin_fetch_description = %s, database_id = %s,
                         table_name = %s, memory_limit_mb = %s, cpu_limit_cores = %s, max_runtime_minutes = %s,
@@ -641,6 +645,7 @@ def edit_worker(worker_id):
                     form.schedule_minute_offset.data,
                     form.timezone.data,
                     form.proxy_rotation_policy.data,
+                    form.use_webshare_proxies.data,
                     proxies,
                     form.max_retries.data,
                     form.timeout.data,

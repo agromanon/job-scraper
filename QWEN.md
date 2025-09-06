@@ -117,6 +117,12 @@ We have successfully implemented a comprehensive UI/UX improvement plan for the 
    - Added local storage for theme persistence
    - Ensured accessibility compliance in both themes
 
+10. Proxy Management Improvements:
+    - Added option to enable/disable Webshare.io proxies per worker
+    - Enhanced proxy configuration with better UI controls
+    - Improved proxy rotation policy selection
+    - Added comprehensive proxy management in worker forms
+
 ## Development Conventions
 - Python code follows PEP 8 style guidelines
 - Database schema is defined in `modular_schema.sql`

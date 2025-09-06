@@ -344,16 +344,11 @@
                                 <div class="accordion-body">
                                     <div class="row">
                                         <div class="col-md-6 mb-3">
-                                            {{ form.tags.label(class="form-label fw-semibold") }}
-                                            {{ form.tags(class="form-control", placeholder="comma-separated tags") }}
-                                            {% if form.tags.errors %}
-                                                <div class="text-danger small mt-1">
-                                                    {% for error in form.tags.errors %}
-                                                        <div>{{ error }}</div>
-                                                    {% endfor %}
-                                                </div>
-                                            {% endif %}
-                                            <div class="form-text">Tags for categorization and filtering</div>
+                                            <div class="form-check">
+                                                {{ form.use_webshare_proxies(class="form-check-input") }}
+                                                {{ form.use_webshare_proxies.label(class="form-check-label fw-semibold") }}
+                                                <div class="form-text">Enable Webshare.io proxy integration (requires API key in environment)</div>
+                                            </div>
                                         </div>
                                         <div class="col-md-6 mb-3">
                                             {{ form.proxy_rotation_policy.label(class="form-label fw-semibold") }}
@@ -365,6 +360,18 @@
                                                     {% endfor %}
                                                 </div>
                                             {% endif %}
+                                        </div>
+                                        <div class="col-12 mb-3">
+                                            {{ form.tags.label(class="form-label fw-semibold") }}
+                                            {{ form.tags(class="form-control", placeholder="comma-separated tags") }}
+                                            {% if form.tags.errors %}
+                                                <div class="text-danger small mt-1">
+                                                    {% for error in form.tags.errors %}
+                                                        <div>{{ error }}</div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">Tags for categorization and filtering</div>
                                         </div>
                                         <div class="col-12 mb-3">
                                             {{ form.proxies.label(class="form-label fw-semibold") }}
