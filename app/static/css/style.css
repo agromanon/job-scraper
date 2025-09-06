@@ -337,21 +337,43 @@ a:hover {
   box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.5);
 }
 
+[data-theme="dark"] .btn-secondary {
+  background-color: var(--surface);
+  border-color: var(--secondary-600);
+  color: var(--secondary-200);
+}
+
+[data-theme="dark"] .btn-secondary:hover:not(:disabled) {
+  background-color: var(--secondary-800);
+  border-color: var(--secondary-500);
+}
+
 /* Outline Button */
 .btn-outline {
   background-color: transparent;
-  border-color: var(--primary-600);
-  color: var(--primary-600);
+  border-color: var(--secondary-300);
+  color: var(--secondary-700);
 }
 
 .btn-outline:hover:not(:disabled) {
-  background-color: var(--primary-50);
-  border-color: var(--primary-700);
-  color: var(--primary-700);
+  background-color: var(--secondary-50);
+  border-color: var(--secondary-400);
+  color: var(--secondary-800);
 }
 
 .btn-outline:focus:not(:disabled) {
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.5);
+}
+
+[data-theme="dark"] .btn-outline {
+  border-color: var(--secondary-600);
+  color: var(--secondary-200);
+}
+
+[data-theme="dark"] .btn-outline:hover:not(:disabled) {
+  background-color: var(--secondary-800);
+  border-color: var(--secondary-500);
+  color: var(--secondary-100);
 }
 
 /* Success Button */
@@ -397,6 +419,41 @@ a:hover {
 
 .btn-danger:focus:not(:disabled) {
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.5);
+}
+
+/* Icon Buttons (for action buttons) */
+.btn-icon {
+  padding: var(--spacer-2);
+  min-width: 36px;
+  min-height: 36px;
+}
+
+.btn-icon .bi {
+  font-size: 1.1rem;
+}
+
+/* Action button group */
+.btn-group .btn {
+  border-radius: 0;
+}
+
+.btn-group .btn:first-child {
+  border-top-left-radius: var(--border-radius);
+  border-bottom-left-radius: var(--border-radius);
+}
+
+.btn-group .btn:last-child {
+  border-top-right-radius: var(--border-radius);
+  border-bottom-right-radius: var(--border-radius);
+}
+
+/* Ensure consistent button styling in dark mode */
+[data-theme="dark"] .btn-group .btn {
+  border-color: var(--secondary-600);
+}
+
+[data-theme="dark"] .btn-group .btn:hover:not(:disabled) {
+  border-color: var(--secondary-500);
 }
 
 /* Icon Buttons */

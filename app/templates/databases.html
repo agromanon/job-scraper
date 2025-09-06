@@ -96,14 +96,14 @@
                                         </td>
                                         <td>
                                             <div class="btn-group" role="group">
-                                                <a href="{{ url_for('edit_database', database_id=db.id) }}" class="btn btn-sm btn-outline" title="Edit">
+                                                <a href="{{ url_for('edit_database', database_id=db.id) }}" class="btn btn-sm btn-outline btn-icon" title="Edit">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
-                                                <a href="{{ url_for('test_database', database_id=db.id) }}" class="btn btn-sm btn-outline-info"
+                                                <a href="{{ url_for('test_database', database_id=db.id) }}" class="btn btn-sm btn-outline btn-icon"
                                                    onclick="event.preventDefault(); testDatabase({{ db.id }}); return false;" title="Test Connection">
                                                     <i class="bi bi-wifi"></i>
                                                 </a>
-                                                <a href="{{ url_for('delete_database', database_id=db.id) }}" class="btn btn-sm btn-outline-danger"
+                                                <a href="{{ url_for('delete_database', database_id=db.id) }}" class="btn btn-sm btn-outline-danger btn-icon"
                                                    onclick="return confirm('Are you sure you want to delete this database?');" title="Delete">
                                                     <i class="bi bi-trash"></i>
                                                 </a>
