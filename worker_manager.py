@@ -37,10 +37,13 @@ except ImportError as e:
 try:
     from proxy_manager import proxy_manager, initialize_webshare_proxy
     _proxy_manager_available = True
-except ImportError:
+    logger.info("Successfully imported proxy_manager")
+except ImportError as e:
     _proxy_manager_available = False
     proxy_manager = None
     initialize_webshare_proxy = None
+    logger.warning(f"Failed to import proxy_manager: {e}")
+    logger.warning("Proxy manager will not be available - Webshare.io integration disabled")
 import psycopg2
 from psycopg2 import sql, extras
 from psycopg2.pool import ThreadedConnectionPool
@@ -188,12 +191,18 @@ class ScrapingWorker:
                     logger.info("Initialized Webshare.io proxy service with API key")
                 except Exception as e:
                     logger.warning(f"Failed to initialize Webshare.io proxy with API key: {e}")
+                    import traceback
+                    logger.warning(f"Webshare proxy initialization traceback: {traceback.format_exc()}")
             elif webshare_username and webshare_password:
                 try:
                     initialize_webshare_proxy(webshare_username, webshare_password)
                     logger.info("Initialized Webshare.io proxy service with username/password")
                 except Exception as e:
                     logger.warning(f"Failed to initialize Webshare.io proxy with username/password: {e}")
+                    import traceback
+                    logger.warning(f"Webshare proxy initialization traceback: {traceback.format_exc()}")
+        else:
+            logger.info("Proxy manager not available, skipping Webshare.io proxy initialization")
     
     def execute(self) -> Dict[str, Any]:
         """Execute the scraping job"""
@@ -374,11 +383,15 @@ class ScrapingWorker:
         # First check if Webshare proxies are enabled for this worker
         # Handle case where use_webshare_proxies might not exist in older database installations
         use_webshare = getattr(self.config, 'use_webshare_proxies', True)
+        logger.info(f"Webshare proxies enabled for this worker: {use_webshare}")
+        
         if not use_webshare:
             logger.info("Webshare proxies disabled for this worker, skipping Webshare integration")
         else:
             # Try Webshare.io rotating proxy
+            logger.info(f"Proxy manager available: {_proxy_manager_available}")
             if _proxy_manager_available and proxy_manager:
+                logger.info("Attempting to get Webshare.io proxies")
                 try:
                     # Try to get individual proxies from Webshare API first
                     if hasattr(proxy_manager, 'get_next_proxy') and callable(getattr(proxy_manager, 'get_next_proxy')):
@@ -397,9 +410,16 @@ class ScrapingWorker:
                     webshare_proxies = proxy_manager.get_proxy_dict()
                     if webshare_proxies:
                         logger.info("Using Webshare.io rotating proxy")
+                        logger.debug(f"Webshare proxies: {webshare_proxies}")
                         return webshare_proxies
+                    else:
+                        logger.info("No Webshare.io proxies available")
                 except Exception as e:
                     logger.warning(f"Failed to get Webshare.io proxies: {e}")
+                    import traceback
+                    logger.warning(f"Webshare proxy retrieval traceback: {traceback.format_exc()}")
+            else:
+                logger.info("Proxy manager not available, skipping Webshare.io proxy integration")
         
         # Fallback to configured proxies
         if self.config.proxies:
