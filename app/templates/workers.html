@@ -22,39 +22,78 @@
     <div class="col-12">
         <div class="card">
             <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <label class="form-label">Search</label>
-                        <input type="text" class="form-control" id="workerSearch" placeholder="Search workers...">
+                <form method="GET" id="workersFilterForm">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Search</label>
+                            <input type="text" class="form-control" id="workerSearch" name="search" placeholder="Search workers..." value="{{ search_term or '' }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" id="statusFilter" name="status">
+                                <option value="">All Statuses</option>
+                                <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                                <option value="paused" {% if status_filter == 'paused' %}selected{% endif %}>Paused</option>
+                                <option value="stopped" {% if status_filter == 'stopped' %}selected{% endif %}>Stopped</option>
+                                <option value="error" {% if status_filter == 'error' %}selected{% endif %}>Error</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Site</label>
+                            <select class="form-select" id="siteFilter" name="site">
+                                <option value="">All Sites</option>
+                                <option value="linkedin" {% if site_filter == 'linkedin' %}selected{% endif %}>LinkedIn</option>
+                                <option value="indeed" {% if site_filter == 'indeed' %}selected{% endif %}>Indeed</option>
+                                <option value="glassdoor" {% if site_filter == 'glassdoor' %}selected{% endif %}>Glassdoor</option>
+                                <option value="google" {% if site_filter == 'google' %}selected{% endif %}>Google Jobs</option>
+                                <option value="zip_recruiter" {% if site_filter == 'zip_recruiter' %}selected{% endif %}>Zip Recruiter</option>
+                                <option value="bayt" {% if site_filter == 'bayt' %}selected{% endif %}>Bayt</option>
+                                <option value="naukri" {% if site_filter == 'naukri' %}selected{% endif %}>Naukri</option>
+                                <option value="bdjobs" {% if site_filter == 'bdjobs' %}selected{% endif %}>BDJobs</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Location</label>
+                            <input type="text" class="form-control" id="locationFilter" name="location" placeholder="Filter by location..." value="{{ location_filter or '' }}">
+                        </div>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Status</label>
-                        <select class="form-select" id="statusFilter">
-                            <option value="">All Statuses</option>
-                            <option value="active">Active</option>
-                            <option value="paused">Paused</option>
-                            <option value="stopped">Stopped</option>
-                            <option value="error">Error</option>
-                        </select>
+                    <div class="row mt-3">
+                        <div class="col-12 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="bi bi-funnel me-1"></i>Apply Filters
+                            </button>
+                            <a href="{{ url_for('list_workers') }}" class="btn btn-outline" id="clearFilters">
+                                <i class="bi bi-x-circle me-1"></i>Clear Filters
+                            </a>
+                        </div>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Site</label>
-                        <select class="form-select" id="siteFilter">
-                            <option value="">All Sites</option>
-                            <option value="linkedin">LinkedIn</option>
-                            <option value="indeed">Indeed</option>
-                            <option value="glassdoor">Glassdoor</option>
-                            <option value="google">Google Jobs</option>
-                            <option value="zip_recruiter">Zip Recruiter</option>
-                            <option value="bayt">Bayt</option>
-                            <option value="naukri">Naukri</option>
-                            <option value="bdjobs">BDJobs</option>
-                        </select>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Workers Stats -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0">Showing {{ workers|length }} of {{ total_workers }} workers</h5>
+                        <p class="text-muted mb-0">Page {{ current_page }} of {{ total_pages }}</p>
                     </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <button class="btn btn-outline w-100" id="clearFilters">
-                            <i class="bi bi-x-circle me-1"></i>Clear Filters
-                        </button>
+                    <div class="d-flex gap-2">
+                        {% if has_previous %}
+                            <a href="{{ url_for('list_workers', page=current_page-1, search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by=sort_by, sort_order=sort_order) }}" class="btn btn-outline">
+                                <i class="bi bi-chevron-left me-1"></i>Previous
+                            </a>
+                        {% endif %}
+                        {% if has_next %}
+                            <a href="{{ url_for('list_workers', page=current_page+1, search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by=sort_by, sort_order=sort_order) }}" class="btn btn-outline">
+                                Next<i class="bi bi-chevron-right ms-1"></i>
+                            </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -72,12 +111,33 @@
                         <table class="table table-hover" id="workersTable">
                             <thead>
                                 <tr>
-                                    <th>Name</th>
-                                    <th>Site</th>
-                                    <th>Status</th>
-                                    <th>Database</th>
-                                    <th>Last Run</th>
-                                    <th>Next Run</th>
+                                    <th>
+                                        <a href="{{ url_for('list_workers', search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by='name', sort_order='asc' if sort_by != 'name' or sort_order == 'desc' else 'desc') }}" class="text-decoration-none">
+                                            Name {% if sort_by == 'name' %}<i class="bi bi-arrow-{% if sort_order == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ url_for('list_workers', search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by='site', sort_order='asc' if sort_by != 'site' or sort_order == 'desc' else 'desc') }}" class="text-decoration-none">
+                                            Site {% if sort_by == 'site' %}<i class="bi bi-arrow-{% if sort_order == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}
+                                        </a>
+                                    </th>
+                                    <th>Description</th>
+                                    <th>Location</th>
+                                    <th>
+                                        <a href="{{ url_for('list_workers', search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by='status', sort_order='asc' if sort_by != 'status' or sort_order == 'desc' else 'desc') }}" class="text-decoration-none">
+                                            Status {% if sort_by == 'status' %}<i class="bi bi-arrow-{% if sort_order == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ url_for('list_workers', search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by='last_run', sort_order='asc' if sort_by != 'last_run' or sort_order == 'desc' else 'desc') }}" class="text-decoration-none">
+                                            Last Run {% if sort_by == 'last_run' %}<i class="bi bi-arrow-{% if sort_order == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ url_for('list_workers', search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by='next_run', sort_order='asc' if sort_by != 'next_run' or sort_order == 'desc' else 'desc') }}" class="text-decoration-none">
+                                            Next Run {% if sort_by == 'next_run' %}<i class="bi bi-arrow-{% if sort_order == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}
+                                        </a>
+                                    </th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -86,14 +146,15 @@
                                     <tr class="worker-row" 
                                         data-name="{{ worker.name.lower() }}" 
                                         data-site="{{ worker.site }}" 
-                                        data-status="{{ worker.status }}">
+                                        data-status="{{ worker.status }}"
+                                        data-location="{{ worker.location|default('', true)|lower }}">
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 <i class="bi bi-robot text-primary me-2"></i>
                                                 <div>
                                                     <strong>{{ worker.name }}</strong>
-                                                    {% if worker.description %}
-                                                        <small class="text-muted d-block">{{ worker.description }}</small>
+                                                    {% if worker.search_term %}
+                                                        <small class="text-muted d-block">{{ worker.search_term }}</small>
                                                     {% endif %}
                                                 </div>
                                             </div>
@@ -102,11 +163,24 @@
                                             <span class="badge bg-light text-dark text-capitalize">{{ worker.site }}</span>
                                         </td>
                                         <td>
+                                            {% if worker.description %}
+                                                <small class="text-muted">{{ worker.description[:100] }}{% if worker.description|length > 100 %}...{% endif %}</small>
+                                            {% else %}
+                                                <small class="text-muted">No description</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if worker.location %}
+                                                <small>{{ worker.location }}</small>
+                                            {% else %}
+                                                <small class="text-muted">Not specified</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
                                             <span class="badge bg-{{ 'success' if worker.status == 'active' else 'warning' if worker.status == 'paused' else 'danger' }}">
                                                 {{ worker.status|title }}
                                             </span>
                                         </td>
-                                        <td>{{ worker.database_name or 'N/A' }}</td>
                                         <td>
                                             <small class="text-muted">
                                                 {% if worker.last_run %}
@@ -164,52 +238,90 @@
         </div>
     </div>
 </div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="row mt-4">
+    <div class="col-12">
+        <nav aria-label="Workers pagination">
+            <ul class="pagination justify-content-center">
+                {% if has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('list_workers', page=current_page-1, search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by=sort_by, sort_order=sort_order) }}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                {% endif %}
+                
+                {% for page_num in range(1, total_pages + 1) %}
+                    {% if page_num == current_page %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                    {% elif page_num <= 3 or page_num >= total_pages - 2 or (page_num >= current_page - 1 and page_num <= current_page + 1) %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('list_workers', page=page_num, search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by=sort_by, sort_order=sort_order) }}">{{ page_num }}</a>
+                        </li>
+                    {% elif page_num == 4 and current_page > 5 %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    {% elif page_num == total_pages - 3 and current_page < total_pages - 4 %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('list_workers', page=current_page+1, search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by=sort_by, sort_order=sort_order) }}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script>
 // Worker filtering functionality
 document.addEventListener('DOMContentLoaded', function() {
+    // Auto-submit form when filters change (optional - uncomment if desired)
+    /*
     const searchInput = document.getElementById('workerSearch');
     const statusFilter = document.getElementById('statusFilter');
     const siteFilter = document.getElementById('siteFilter');
-    const clearFiltersBtn = document.getElementById('clearFilters');
-    const workerRows = document.querySelectorAll('.worker-row');
+    const locationFilter = document.getElementById('locationFilter');
     
-    function filterWorkers() {
-        const searchTerm = searchInput.value.toLowerCase();
-        const statusValue = statusFilter.value;
-        const siteValue = siteFilter.value;
-        
-        workerRows.forEach(row => {
-            const name = row.getAttribute('data-name');
-            const status = row.getAttribute('data-status');
-            const site = row.getAttribute('data-site');
-            
-            const matchesSearch = name.includes(searchTerm);
-            const matchesStatus = !statusValue || status === statusValue;
-            const matchesSite = !siteValue || site === siteValue;
-            
-            if (matchesSearch && matchesStatus && matchesSite) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
+    // Debounce function to limit search requests
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
     }
     
-    // Attach event listeners
-    searchInput.addEventListener('input', filterWorkers);
-    statusFilter.addEventListener('change', filterWorkers);
-    siteFilter.addEventListener('change', filterWorkers);
+    // Auto-submit with debounce
+    const debouncedSubmit = debounce(function() {
+        document.getElementById('workersFilterForm').submit();
+    }, 500);
     
-    // Clear filters
-    clearFiltersBtn.addEventListener('click', function() {
-        searchInput.value = '';
-        statusFilter.value = '';
-        siteFilter.value = '';
-        filterWorkers();
-    });
+    // Attach event listeners
+    if (searchInput) searchInput.addEventListener('input', debouncedSubmit);
+    if (statusFilter) statusFilter.addEventListener('change', function() { document.getElementById('workersFilterForm').submit(); });
+    if (siteFilter) siteFilter.addEventListener('change', function() { document.getElementById('workersFilterForm').submit(); });
+    if (locationFilter) locationFilter.addEventListener('input', debouncedSubmit);
+    */
 });
 </script>
 {% endblock %}

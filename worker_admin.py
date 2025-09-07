@@ -388,18 +388,134 @@ def dashboard():
 @app.route('/workers')
 @login_required
 def list_workers():
-    """List all workers"""
+    """List all workers with filtering, sorting and pagination"""
     try:
-        workers = execute_query("""
+        # Get filter parameters
+        search_term = request.args.get('search', '').strip()
+        status_filter = request.args.get('status', '').strip()
+        site_filter = request.args.get('site', '').strip()
+        location_filter = request.args.get('location', '').strip()
+        sort_by = request.args.get('sort_by', 'name').strip()
+        sort_order = request.args.get('sort_order', 'asc').strip().lower()
+        page = max(1, int(request.args.get('page', 1)))
+        per_page = min(100, max(10, int(request.args.get('per_page', 20))))
+        
+        # Validate sort parameters
+        valid_sort_columns = ['name', 'site', 'status', 'location', 'last_run', 'next_run']
+        if sort_by not in valid_sort_columns:
+            sort_by = 'name'
+        if sort_order not in ['asc', 'desc']:
+            sort_order = 'asc'
+        
+        # Build WHERE clause
+        where_conditions = []
+        params = []
+        
+        if search_term:
+            where_conditions.append("(w.name ILIKE %s OR w.description ILIKE %s OR w.search_term ILIKE %s)")
+            search_param = f"%{search_term}%"
+            params.extend([search_param, search_param, search_param])
+        
+        if status_filter:
+            where_conditions.append("w.status = %s")
+            params.append(status_filter)
+        
+        if site_filter:
+            where_conditions.append("w.site = %s")
+            params.append(site_filter)
+        
+        if location_filter:
+            where_conditions.append("w.location ILIKE %s")
+            params.append(f"%{location_filter}%")
+        
+        where_clause = ""
+        if where_conditions:
+            where_clause = "WHERE " + " AND ".join(where_conditions)
+        
+        # Build ORDER BY clause
+        order_clause = f"ORDER BY w.{sort_by} {sort_order}"
+        if sort_by == 'last_run' or sort_by == 'next_run':
+            # Handle NULL values for date columns
+            order_clause = f"ORDER BY w.{sort_by} {sort_order} NULLS LAST"
+        
+        # Calculate offset for pagination
+        offset = (page - 1) * per_page
+        
+        # Get total count for pagination
+        count_query = f"""
+            SELECT COUNT(*) as total
+            FROM scraping_workers w
+            LEFT JOIN scraping_databases d ON w.database_id = d.id
+            {where_clause}
+        """
+        count_result = execute_query(count_query, tuple(params), fetch=True)
+        total_workers = count_result[0]['total'] if count_result else 0
+        
+        # Get filtered and paginated workers
+        query = f"""
             SELECT 
                 w.*,
                 d.name as database_name
             FROM scraping_workers w
             LEFT JOIN scraping_databases d ON w.database_id = d.id
-            ORDER BY w.name
+            {where_clause}
+            {order_clause}
+            LIMIT %s OFFSET %s
+        """
+        
+        # Add pagination parameters
+        query_params = params + [per_page, offset]
+        workers = execute_query(query, tuple(query_params), fetch=True)
+        
+        # Calculate pagination info
+        total_pages = (total_workers + per_page - 1) // per_page if total_workers > 0 else 1
+        has_previous = page > 1
+        has_next = page < total_pages
+        
+        # Get unique values for filter dropdowns
+        sites = execute_query("""
+            SELECT DISTINCT site 
+            FROM scraping_workers 
+            WHERE site IS NOT NULL 
+            ORDER BY site
         """, fetch=True)
         
-        return render_template('workers.html', workers=workers)
+        statuses = execute_query("""
+            SELECT DISTINCT status 
+            FROM scraping_workers 
+            WHERE status IS NOT NULL 
+            ORDER BY status
+        """, fetch=True)
+        
+        locations = execute_query("""
+            SELECT DISTINCT location 
+            FROM scraping_workers 
+            WHERE location IS NOT NULL AND location != ''
+            ORDER BY location
+        """, fetch=True)
+        
+        # Prepare filter values for template
+        filter_values = {
+            'sites': [row['site'] for row in sites] if sites else [],
+            'statuses': [row['status'] for row in statuses] if statuses else [],
+            'locations': [row['location'] for row in locations if row['location']] if locations else []
+        }
+        
+        return render_template('workers.html', 
+                             workers=workers,
+                             current_page=page,
+                             total_pages=total_pages,
+                             total_workers=total_workers,
+                             has_previous=has_previous,
+                             has_next=has_next,
+                             per_page=per_page,
+                             search_term=search_term,
+                             status_filter=status_filter,
+                             site_filter=site_filter,
+                             location_filter=location_filter,
+                             sort_by=sort_by,
+                             sort_order=sort_order,
+                             filter_values=filter_values)
     
     except Exception as e:
         app.logger.error(f"Workers list error: {e}")
