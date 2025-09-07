@@ -43,6 +43,12 @@
                         <span class="sidebar-nav-label">Databases</span>
                     </a>
                 </li>
+                <li class="sidebar-nav-item">
+                    <a href="{{ url_for('cleanup_dashboard') }}" class="sidebar-nav-link {% if request.endpoint == 'cleanup_dashboard' %}active{% endif %}">
+                        <i class="bi bi-trash sidebar-nav-icon"></i>
+                        <span class="sidebar-nav-label">Cleanup</span>
+                    </a>
+                </li>
             </ul>
             <div class="p-4 border-top">
                 <div class="d-flex align-items-center mb-3">

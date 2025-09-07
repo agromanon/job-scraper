@@ -23,9 +23,14 @@ from psycopg2 import sql, extras
 from psycopg2.pool import ThreadedConnectionPool
 import secrets
 import bcrypt
+from apscheduler.schedulers.background import BackgroundScheduler
+import atexit
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', secrets.token_hex(32))
+
+# Initialize background scheduler
+scheduler = BackgroundScheduler()
 
 # Database connection - parse individual parameters for better reliability
 POSTGRES_URL = os.getenv('POSTGRES_URL', "postgresql://aromanon:Afmg2486!@my-job-scraper_my-job-scraper:5432/job-data")
@@ -1892,6 +1897,97 @@ def delete_database(database_id):
         app.logger.error(f"Database deletion error: {e}")
         flash(f'Error deleting database: {str(e)}', 'error')
         return redirect(url_for('list_databases'))
+
+
+def check_and_run_scheduled_workers():
+    """Check for scheduled workers that need to run and execute them"""
+    try:
+        # Import here to avoid circular imports
+        from worker_manager import WorkerManager
+        
+        postgres_url = os.getenv('POSTGRES_URL')
+        if not postgres_url:
+            app.logger.error("POSTGRES_URL not set, cannot run scheduled workers")
+            return
+            
+        # Create a temporary worker manager to check and run workers
+        manager = WorkerManager(postgres_url)
+        manager.check_and_run_workers()
+        
+    except Exception as e:
+        app.logger.error(f"Error checking and running scheduled workers: {e}")
+
+
+@app.route('/cleanup')
+@login_required
+def cleanup_dashboard():
+    """Database cleanup dashboard"""
+    try:
+        # Get cleanup statistics
+        stats = execute_query("""
+            SELECT 
+                COUNT(*) as total_jobs,
+                COUNT(CASE WHEN is_active = false THEN 1 END) as inactive_jobs,
+                COUNT(CASE WHEN last_seen < CURRENT_DATE - INTERVAL '30 days' THEN 1 END) as old_inactive_jobs,
+                MAX(last_seen) as most_recent_job,
+                MIN(created_at) as oldest_job
+            FROM indeed_br
+        """, fetch=True)[0] or {}
+        
+        # Get recent cleanup runs
+        recent_cleanups = execute_query("""
+            SELECT *
+            FROM worker_execution_history
+            WHERE worker_name LIKE '%cleanup%'
+            ORDER BY execution_start DESC
+            LIMIT 10
+        """, fetch=True)
+        
+        return render_template('cleanup_dashboard.html', stats=stats, recent_cleanups=recent_cleanups)
+        
+    except Exception as e:
+        app.logger.error(f"Cleanup dashboard error: {e}")
+        return render_template('error.html', error=str(e))
+
+
+@app.route('/cleanup/run')
+@login_required
+def run_cleanup():
+    """Run database cleanup"""
+    try:
+        # Import here to avoid circular imports
+        import subprocess
+        import sys
+        
+        # Run the cleanup script
+        result = subprocess.run([sys.executable, 'job_status_checker.py', '--run-once'], 
+                               cwd=os.path.dirname(os.path.abspath(__file__)),
+                               capture_output=True, text=True, timeout=300)
+        
+        if result.returncode == 0:
+            flash('Database cleanup completed successfully!', 'success')
+        else:
+            flash(f'Database cleanup failed: {result.stderr}', 'error')
+            
+        return redirect(url_for('cleanup_dashboard'))
+        
+    except Exception as e:
+        app.logger.error(f"Cleanup execution error: {e}")
+        flash(f'Error running cleanup: {str(e)}', 'error')
+        return redirect(url_for('cleanup_dashboard'))
+
+
+# Initialize background scheduler
+scheduler = BackgroundScheduler()
+scheduler.add_job(func=check_and_run_scheduled_workers, trigger="interval", minutes=1)
+scheduler.start()
+
+# Shut down the scheduler when exiting the app
+atexit.register(lambda: scheduler.shutdown())
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -27,6 +27,7 @@ tls-client==1.0.1
 
 # Task scheduling
 schedule==1.2.0
+APScheduler==3.10.4
 
 # Data processing
 numpy==1.26.3
