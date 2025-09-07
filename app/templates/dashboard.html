@@ -83,8 +83,8 @@
             <div class="metric-card-header">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <h6 class="metric-card-title">Jobs Scraped</h6>
-                        <div class="metric-card-value">{{ "{:,}".format(stats.get('jobs_scraped_today', 0) | int) }}</div>
+                        <h6 class="metric-card-title">Jobs Added</h6>
+                        <div class="metric-card-value">{{ "{:,}".format(stats.get('net_jobs_added_today', 0) | int) }}</div>
                     </div>
                     <div class="bg-warning bg-opacity-10 rounded-circle p-3">
                         <i class="bi bi-briefcase text-warning fs-4"></i>
@@ -97,7 +97,7 @@
             <div class="metric-card-footer">
                 <small class="text-muted">
                     <i class="bi bi-info-circle me-1"></i>
-                    Total jobs scraped today
+                    Net new jobs added today
                 </small>
             </div>
         </div>
