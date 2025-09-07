@@ -177,6 +177,23 @@ worker_templates (pre-configured worker setups)
 4. **Configuration**: Environment variables for database/auth
 5. **Deployment**: Docker Compose orchestration
 
+### EasyPanel Deployment
+The JobSpy system is designed for deployment on EasyPanel, which provides a simplified approach to managing the application compared to complex deployment scripts.
+
+#### Deployment Process
+1. Code changes are committed to GitHub
+2. EasyPanel automatically detects new commits and rebuilds the application
+3. Services are managed through EasyPanel's web interface
+4. Environment variables are configured through the EasyPanel dashboard
+5. Monitoring and logs are available through the web interface
+
+#### Key Benefits
+- **Simplified Management**: No complex bash scripts needed
+- **Automatic Deployments**: Push to deploy from Git
+- **Built-in Monitoring**: Health checks and resource usage monitoring
+- **Zero-downtime Updates**: Seamless application updates
+- **Easy Scaling**: Duplicate services for additional workers
+
 ### Key Environment Variables
 ```bash
 POSTGRES_URL=postgres://user:pass@host:port/dbname?sslmode=require
@@ -242,7 +259,7 @@ ADMIN_PASSWORD=admin123
 
 ## Deployment Architecture
 
-### Production Deployment (EasyPanel)
+### Production Deployment (Docker Compose)
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │    │   PostgreSQL    │    │   Redis         │
@@ -256,6 +273,15 @@ ADMIN_PASSWORD=admin123
                     │   (Port 80/443) │
                     └─────────────────┘
 ```
+
+### EasyPanel Deployment
+The JobSpy system is deployed using EasyPanel, which provides a simplified approach to managing the application:
+
+1. **Code Updates**: Commits to GitHub are automatically detected by EasyPanel
+2. **Service Management**: Services are managed through EasyPanel's web interface
+3. **Environment Configuration**: Environment variables are configured through the dashboard
+4. **Monitoring**: Built-in health checks and resource usage monitoring
+5. **Scaling**: Services can be easily duplicated for additional workers
 
 ### Networking
 - **Frontend Network**: `172.20.0.0/16` (custom bridge)
@@ -346,16 +372,25 @@ Test all CRUD operations for workers and databases
 Verify responsive design on mobile devices
 ```
 
+### EasyPanel Deployment Process
+1. **Code Updates**: Commit changes to GitHub
+2. **Automatic Deployment**: EasyPanel detects new commits and rebuilds the application
+3. **Service Management**: Manage services through EasyPanel's web interface
+4. **Environment Configuration**: Update environment variables through the dashboard
+5. **Monitoring**: Check service health and logs through the web interface
+
 ### Critical Files to Review
 - `worker_admin.py`: Main application logic and routes
 - `Dockerfile.force_rebuild_ultimate`: Template generation and build process
 - `modular_schema.sql`: Database schema and constraints
 - `docker-compose.yml`: Service orchestration and networking
+- `EASYPANEL_DEPLOYMENT.md`: EasyPanel-specific deployment instructions
 
 ### Common Development Tasks
 1. **Adding New Fields**: Update Form class + database schema + SQL statements
 2. **Template Issues**: Regenerate in Dockerfile.force_rebuild_ultimate and rebuild
 3. **Database Schema**: Use fix_missing_table.sql for quick fixes, update modular_schema.sql for permanent changes
 4. **Docker Updates**: Always use force rebuild Dockerfile to ensure templates are updated
+5. **EasyPanel Configuration**: Update deployment documentation when making deployment-related changes
 
 This architecture provides a solid foundation for a production-ready job scraping system with current focus on completing the execution engine and monitoring components.

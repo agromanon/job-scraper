@@ -145,6 +145,18 @@ class ProxyManager:
                 
             response = requests.get(url, headers=headers, params=params, timeout=30)
             
+            # Handle rate limiting with exponential backoff
+            retry_count = 0
+            max_retries = 3
+            while response.status_code == 429 and retry_count < max_retries:
+                retry_count += 1
+                # Exponential backoff: 2^retry_count seconds
+                wait_time = 2 ** retry_count
+                if logger:
+                    logger.warning(f"Webshare API rate limit exceeded. Retrying in {wait_time} seconds... (attempt {retry_count}/{max_retries})")
+                time.sleep(wait_time)
+                response = requests.get(url, headers=headers, params=params, timeout=30)
+            
             if response.status_code == 200:
                 data = response.json()
                 proxies = []
@@ -171,6 +183,10 @@ class ProxyManager:
                 else:
                     if logger:
                         logger.warning("No proxies returned from Webshare API")
+            elif response.status_code == 429:
+                # Rate limit still exceeded after retries
+                if logger:
+                    logger.error("Webshare API rate limit exceeded after multiple retries. Consider reducing refresh frequency.")
             else:
                 if logger:
                     logger.error(f"Failed to fetch proxies from Webshare API. Status code: {response.status_code}, Response: {response.text}")
@@ -201,6 +217,14 @@ class ProxyManager:
         if 'webshare' not in self.proxy_configs:
             return None
             
+        # If we have individual proxies in our pool, use the next one
+        if self.proxy_pool:
+            proxy = self.get_next_proxy()
+            if proxy:
+                proxy_url = f"http://{proxy.username}:{proxy.password}@{proxy.proxy_address}:{proxy.port}/"
+                return proxy_url
+        
+        # Fallback to general rotating proxy if no individual proxies available
         config = self.proxy_configs['webshare']
         
         # Handle API key authentication (preferred)
