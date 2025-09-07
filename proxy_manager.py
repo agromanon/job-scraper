@@ -137,7 +137,8 @@ class ProxyManager:
             # Parameters for the request
             params = {
                 "page_size": 100,  # Fetch up to 100 proxies
-                "page": 1
+                "page": 1,
+                "mode": "direct"  # Required parameter for Webshare API
             }
             
             if logger:
