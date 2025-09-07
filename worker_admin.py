@@ -565,7 +565,7 @@ def new_worker():
 def edit_worker(worker_id):
     """Edit existing worker"""
     try:
-        # Get worker data
+        # Get worker data with fallback for missing columns
         try:
             worker_data = execute_query("""
                 SELECT 
@@ -581,7 +581,7 @@ def edit_worker(worker_id):
         except Exception as e:
             # Handle case where use_webshare_proxies column doesn't exist yet
             if "use_webshare_proxies" in str(e):
-                logger.warning("use_webshare_proxies column not found, fetching without it")
+                logger.warning("use_webshare_proxies column not found, fetching without it and defaulting to True")
                 worker_data = execute_query("""
                     SELECT 
                         id, name, description, site, search_term, location, country, distance, job_type,
