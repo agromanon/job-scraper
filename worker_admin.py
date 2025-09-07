@@ -339,7 +339,8 @@ def dashboard():
                 COUNT(CASE WHEN status = 'active' THEN 1 END) as active_workers,
                 COUNT(CASE WHEN status = 'paused' THEN 1 END) as paused_workers,
                 COUNT(CASE WHEN status = 'error' THEN 1 END) as error_workers,
-                COUNT(CASE WHEN last_run >= CURRENT_DATE THEN 1 END) as workers_today,
+                COUNT(CASE WHEN last_run >= CURRENT_DATE THEN 1 END) as workers_ran_today,
+                COALESCE((SELECT SUM(jobs_inserted) FROM worker_execution_history WHERE execution_start >= CURRENT_DATE), 0) as jobs_scraped_today,
                 COUNT(CASE WHEN next_run <= CURRENT_TIMESTAMP + INTERVAL '1 hour' THEN 1 END) as scheduled_soon
             FROM scraping_workers
         """, fetch=True)[0] or {}
