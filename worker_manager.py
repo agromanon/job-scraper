@@ -694,8 +694,10 @@ class ScrapingWorker:
         
         for result in results:
             # Check if job already exists
+            # Properly quote the table name to handle special characters
+            quoted_table_name = f'"{self.config.table_name}"'
             cursor.execute(f"""
-                SELECT 1 FROM {self.config.table_name} 
+                SELECT 1 FROM {quoted_table_name} 
                 WHERE job_url = %s
             """, (result.get('job_url'),))
             
