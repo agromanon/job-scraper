@@ -56,6 +56,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+@dataclass
 class WorkerConfig:
     """Configuration for a scraping worker"""
     id: int
