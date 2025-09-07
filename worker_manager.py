@@ -259,7 +259,7 @@ class ScrapingWorker:
             }
     
     def _scrape_jobs(self) -> List[Dict]:
-        """Execute job scraping using JobSpy"""
+        """Execute job scraping using JobSpy with enhanced safety measures"""
         try:
             # Map site name to JobSpy Site enum
             site_enum = Site[self.config.site.upper()]
@@ -276,8 +276,13 @@ class ScrapingWorker:
             # Convert LinkedIn company IDs to proper format
             linkedin_company_ids = self.config.linkedin_company_ids if self.config.linkedin_company_ids else None
             
-            # Execute scraping
+            # Execute scraping with safety measures for large job counts
             logger.info(f"Scraping {site_enum.name} with offset={self.config.current_offset}, results_wanted={self.config.results_per_run}")
+            
+            # For large job counts, implement safety measures
+            results_wanted = self.config.results_per_run
+            if results_wanted > 200 and site_enum == Site.LINKEDIN:
+                logger.warning(f"Large job count ({results_wanted}) requested for LinkedIn. Implementing safety measures.")
             
             # For Glassdoor, use enhanced strategies to get diverse results
             search_term = self.config.search_term or None
@@ -341,8 +346,19 @@ class ScrapingWorker:
                 
                 logger.info(f"Constructed Google search term: '{google_search_term}'")
             
-            df = scrape_jobs(
-                site_name=[site_enum],
+            # Add randomized delays for large job counts, especially for LinkedIn
+            import random
+            import time
+            
+            if site_enum == Site.LINKEDIN and results_wanted > 100:
+                # Add initial delay before starting scraping
+                initial_delay = random.uniform(5, 15)
+                logger.info(f"Adding initial delay of {initial_delay:.1f} seconds for LinkedIn safety")
+                time.sleep(initial_delay)
+            
+            # Use exponential backoff for scraping
+            df = self._exponential_backoff_scrape(
+                site_enum,
                 search_term=search_term,
                 google_search_term=google_search_term,
                 location=self.config.location or None if site_enum != Site.GOOGLE else None,
@@ -354,7 +370,7 @@ class ScrapingWorker:
                 linkedin_fetch_description=self.config.linkedin_fetch_description,
                 linkedin_company_ids=linkedin_company_ids,
                 hours_old=hours_old,
-                results_wanted=self.config.results_per_run,
+                results_wanted=results_wanted,
                 offset=self.config.current_offset,
                 description_format=desc_format,
                 timeout=self.config.timeout,
@@ -378,6 +394,37 @@ class ScrapingWorker:
             logger.error(f"Scraping failed for worker {self.config.name}: {e}")
             raise
     
+    def _exponential_backoff_scrape(self, site_enum, **kwargs):
+        """Execute job scraping with exponential backoff for rate limiting"""
+        import time
+        import random
+        
+        max_retries = 5
+        base_delay = 5  # Start with 5 seconds
+        
+        for attempt in range(max_retries):
+            try:
+                return scrape_jobs(site_name=[site_enum], **kwargs)
+            except Exception as e:
+                # Check if this looks like a rate limiting error
+                error_str = str(e).lower()
+                if any(keyword in error_str for keyword in ['429', 'rate limit', 'too many requests', 'timeout']):
+                    if attempt < max_retries - 1:
+                        # Exponential backoff with jitter
+                        delay = base_delay * (2 ** attempt) + random.uniform(0, 5)
+                        logger.warning(f"Rate limit detected. Retrying in {delay:.1f} seconds (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(delay)
+                        continue
+                    else:
+                        logger.error(f"Max retries exceeded for rate limiting. Last error: {e}")
+                        raise
+                else:
+                    # Not a rate limiting error, raise immediately
+                    raise
+        
+        # This should never be reached, but just in case
+        raise Exception("Max retries exceeded")
+    
     def _get_proxies(self):
         """Get proxies for scraping - prioritize Webshare.io, fallback to configured proxies"""
         # First check if Webshare proxies are enabled for this worker
@@ -393,8 +440,21 @@ class ScrapingWorker:
             if _proxy_manager_available and proxy_manager:
                 logger.info("Attempting to get Webshare.io proxies")
                 try:
-                    # Try to get individual proxies from Webshare API first
-                    if hasattr(proxy_manager, 'get_next_proxy') and callable(getattr(proxy_manager, 'get_next_proxy')):
+                    # Try to get individual proxies from Webshare API first with enhanced rotation
+                    if hasattr(proxy_manager, 'get_proxy_for_request') and callable(getattr(proxy_manager, 'get_proxy_for_request')):
+                        webshare_proxy = proxy_manager.get_proxy_for_request()
+                        if webshare_proxy:
+                            # Create proxy dictionary with individual proxy credentials
+                            proxy_url = f"http://{webshare_proxy.username}:{webshare_proxy.password}@{webshare_proxy.proxy_address}:{webshare_proxy.port}/"
+                            proxy_dict = {
+                                "http": proxy_url,
+                                "https": proxy_url
+                            }
+                            logger.info(f"Using individual Webshare.io proxy: {webshare_proxy.proxy_address}:{webshare_proxy.port}")
+                            return proxy_dict
+                    
+                    # Fallback to older method
+                    elif hasattr(proxy_manager, 'get_next_proxy') and callable(getattr(proxy_manager, 'get_next_proxy')):
                         webshare_proxy = proxy_manager.get_next_proxy()
                         if webshare_proxy:
                             # Create proxy dictionary with individual proxy credentials

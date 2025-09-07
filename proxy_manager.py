@@ -77,6 +77,8 @@ class ProxyManager:
         self.last_refresh = datetime.min
         self.refresh_interval = 300  # 5 minutes
         self.current_proxy_index = 0
+        self.request_count = 0
+        self.rotation_threshold = 25  # Rotate proxy every 25 requests by default
     
     def add_webshare_config(self, username=None, password=None, 
                           api_key=None,
@@ -208,6 +210,27 @@ class ProxyManager:
         proxy = self.proxy_pool[self.current_proxy_index]
         self.current_proxy_index = (self.current_proxy_index + 1) % len(self.proxy_pool)
         
+        return proxy
+    
+    def get_proxy_for_request(self):
+        """Get a proxy for a specific request, rotating more frequently"""
+        import random
+        
+        # Refresh proxy pool if needed
+        if not self.proxy_pool:
+            self.refresh_proxy_pool()
+            
+        if not self.proxy_pool:
+            return None
+            
+        # Rotate proxy every N requests (randomized between 15-35)
+        if self.request_count % self.rotation_threshold == 0:
+            self.current_proxy_index = (self.current_proxy_index + 1) % len(self.proxy_pool)
+            # Set new random threshold for next rotation
+            self.rotation_threshold = random.randint(15, 35)
+            
+        self.request_count += 1
+        proxy = self.proxy_pool[self.current_proxy_index]
         return proxy
     
     def get_rotating_proxy(self):
