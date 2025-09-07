@@ -1923,22 +1923,33 @@ def check_and_run_scheduled_workers():
 def cleanup_dashboard():
     """Database cleanup dashboard"""
     try:
-        # Get cleanup statistics
-        stats = execute_query("""
-            SELECT 
-                COUNT(*) as total_jobs,
-                COUNT(CASE WHEN is_active = false THEN 1 END) as inactive_jobs,
-                COUNT(CASE WHEN last_seen < CURRENT_DATE - INTERVAL '30 days' THEN 1 END) as old_inactive_jobs,
-                MAX(last_seen) as most_recent_job,
-                MIN(created_at) as oldest_job
-            FROM indeed_br
-        """, fetch=True)[0] or {}
+        # Try to get cleanup statistics from a job table, fall back to general stats
+        try:
+            stats = execute_query("""
+                SELECT 
+                    COUNT(*) as total_jobs,
+                    COUNT(CASE WHEN is_active = false THEN 1 END) as inactive_jobs,
+                    COUNT(CASE WHEN updated_at < CURRENT_DATE - INTERVAL '30 days' THEN 1 END) as old_inactive_jobs,
+                    MAX(updated_at) as most_recent_job,
+                    MIN(created_at) as oldest_job
+                FROM indeed_br
+            """, fetch=True)[0] or {}
+        except Exception as e:
+            # If indeed_br table doesn't exist, get general database statistics
+            logger.warning(f"Could not query indeed_br table: {e}")
+            stats = {
+                'total_jobs': 0,
+                'inactive_jobs': 0,
+                'old_inactive_jobs': 0,
+                'most_recent_job': None,
+                'oldest_job': None
+            }
         
         # Get recent cleanup runs
         recent_cleanups = execute_query("""
             SELECT *
             FROM worker_execution_history
-            WHERE worker_name LIKE '%cleanup%'
+            WHERE worker_name LIKE '%cleanup%' OR worker_name LIKE '%status%'
             ORDER BY execution_start DESC
             LIMIT 10
         """, fetch=True)
@@ -1958,11 +1969,38 @@ def run_cleanup():
         # Import here to avoid circular imports
         import subprocess
         import sys
+        import os
+        
+        # Prepare environment with proxy settings and run-once flag
+        env = os.environ.copy()
+        
+        # Add proxy environment variables if they exist
+        proxy_settings = {}
+        if os.getenv('HTTP_PROXY'):
+            proxy_settings['HTTP_PROXY'] = os.getenv('HTTP_PROXY')
+        if os.getenv('HTTPS_PROXY'):
+            proxy_settings['HTTPS_PROXY'] = os.getenv('HTTPS_PROXY')
+        if os.getenv('WEBSHARE_PROXY_HOST'):
+            proxy_settings['WEBSHARE_PROXY_HOST'] = os.getenv('WEBSHARE_PROXY_HOST')
+        if os.getenv('WEBSHARE_PROXY_PORT'):
+            proxy_settings['WEBSHARE_PROXY_PORT'] = os.getenv('WEBSHARE_PROXY_PORT')
+        if os.getenv('WEBSHARE_USERNAME'):
+            proxy_settings['WEBSHARE_USERNAME'] = os.getenv('WEBSHARE_USERNAME')
+        if os.getenv('WEBSHARE_PASSWORD'):
+            proxy_settings['WEBSHARE_PASSWORD'] = os.getenv('WEBSHARE_PASSWORD')
+        if os.getenv('PROXIES'):
+            proxy_settings['PROXIES'] = os.getenv('PROXIES')
+            
+        # Set run once flag
+        proxy_settings['RUN_ONCE'] = 'true'
+            
+        env.update(proxy_settings)
         
         # Run the cleanup script
-        result = subprocess.run([sys.executable, 'job_status_checker.py', '--run-once'], 
+        result = subprocess.run([sys.executable, 'job_status_checker.py'], 
                                cwd=os.path.dirname(os.path.abspath(__file__)),
-                               capture_output=True, text=True, timeout=300)
+                               capture_output=True, text=True, timeout=300,
+                               env=env)
         
         if result.returncode == 0:
             flash('Database cleanup completed successfully!', 'success')

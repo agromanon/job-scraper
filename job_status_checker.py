@@ -30,6 +30,63 @@ class JobStatusChecker:
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         })
+        
+        # Configure proxies if available
+        self._setup_proxies()
+    
+    def _setup_proxies(self):
+        """Configure HTTP proxies from environment variables"""
+        # Check for Webshare proxy configuration first
+        webshare_host = os.getenv('WEBSHARE_PROXY_HOST')
+        webshare_port = os.getenv('WEBSHARE_PROXY_PORT')
+        webshare_username = os.getenv('WEBSHARE_USERNAME')
+        webshare_password = os.getenv('WEBSHARE_PASSWORD')
+        
+        if webshare_host and webshare_port:
+            # Webshare rotating proxy
+            proxy_url = f"http://{webshare_host}:{webshare_port}"
+            if webshare_username and webshare_password:
+                proxy_url = f"http://{webshare_username}:{webshare_password}@{webshare_host}:{webshare_port}"
+            
+            proxies = {
+                'http': proxy_url,
+                'https': proxy_url
+            }
+            self.session.proxies.update(proxies)
+            logger.info(f"Configured Webshare proxy: {proxy_url}")
+            return
+        
+        # Check for standard HTTP proxy environment variables
+        http_proxy = os.getenv('HTTP_PROXY') or os.getenv('http_proxy')
+        https_proxy = os.getenv('HTTPS_PROXY') or os.getenv('https_proxy')
+        
+        if http_proxy or https_proxy:
+            proxies = {}
+            if http_proxy:
+                proxies['http'] = http_proxy
+            if https_proxy:
+                proxies['https'] = https_proxy
+            
+            self.session.proxies.update(proxies)
+            logger.info(f"Configured HTTP proxies: {proxies}")
+            return
+        
+        # Check for individual proxy configuration from PROXIES environment variable
+        proxies_env = os.getenv('PROXIES')
+        if proxies_env:
+            try:
+                proxy_list = [p.strip() for p in proxies_env.split(',') if p.strip()]
+                if proxy_list:
+                    # Use the first proxy from the list
+                    proxy_url = proxy_list[0]
+                    proxies = {
+                        'http': proxy_url,
+                        'https': proxy_url
+                    }
+                    self.session.proxies.update(proxies)
+                    logger.info(f"Configured proxy from PROXIES env: {proxy_url}")
+            except Exception as e:
+                logger.warning(f"Failed to configure proxy from PROXIES env: {e}")
     
     def get_stale_jobs(self, days_old: int = 7, limit: int = 100) -> List[Dict]:
         """Get jobs that haven't been checked recently"""
