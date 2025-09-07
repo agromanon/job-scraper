@@ -65,6 +65,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY jobspy/ /app/jobspy/
 COPY worker_admin.py /app/
 COPY worker_manager.py /app/
+COPY proxy_manager.py /app/
 COPY modular_schema.sql /app/modular_schema.sql
 
 # Create directories for templates and static files

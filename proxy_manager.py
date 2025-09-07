@@ -6,7 +6,7 @@ Handles automatic proxy fetching, rotation, and health checking
 
 # Handle missing dependencies gracefully
 try:
-    import requests
+    import requests  # type: ignore
     REQUESTS_AVAILABLE = True
 except ImportError:
     requests = None
