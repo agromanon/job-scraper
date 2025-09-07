@@ -849,6 +849,249 @@ def toggle_worker(worker_id):
         return redirect(url_for('list_workers'))
 
 
+@app.route('/workers/<int:worker_id>/duplicate', methods=['GET', 'POST'])
+@login_required
+def duplicate_worker(worker_id):
+    """Duplicate existing worker with option to change search term"""
+    try:
+        # Get worker data
+        worker_data = execute_query("""
+            SELECT 
+                id, name, description, site, search_term, location, country, distance, job_type,
+                is_remote, easy_apply, linkedin_company_ids, hours_old, results_per_run, current_offset,
+                schedule_hours, schedule_minute_offset, timezone, proxy_rotation_policy, use_webshare_proxies, proxies,
+                max_retries, timeout, rate_limit_requests, rate_limit_seconds, description_format,
+                linkedin_fetch_description, database_id, table_name, status, memory_limit_mb,
+                cpu_limit_cores, max_runtime_minutes, max_consecutive_errors, auto_pause_on_errors, tags, 
+                next_run, last_run, last_success, last_error, consecutive_errors, created_at, updated_at
+            FROM scraping_workers WHERE id = %s
+        """, (worker_id,), fetch=True)
+        
+        if not worker_data:
+            flash('Worker not found', 'error')
+            return redirect(url_for('list_workers'))
+        
+        worker = worker_data[0]
+        form = WorkerForm()
+        
+        # Populate database choices
+        databases = execute_query("SELECT id, name FROM scraping_databases WHERE is_active = true ORDER BY name")
+        form.database_id.choices = [(db['id'], db['name']) for db in databases]
+        
+        # If GET request, pre-populate form with existing worker data
+        if request.method == 'GET':
+            # Populate form with worker data for GET request
+            form.name.data = worker['name'] + " (Copy)"
+            form.description.data = worker['description']
+            form.site.data = worker['site']
+            form.search_term.data = worker['search_term']
+            form.location.data = worker['location']
+            form.country.data = worker['country']
+            form.distance.data = worker['distance']
+            
+            # Handle job_type array
+            if worker['job_type']:
+                form.job_type.data = worker['job_type']
+            
+            form.is_remote.data = worker['is_remote']
+            form.easy_apply.data = worker['easy_apply']
+            
+            # Handle linkedin_company_ids array
+            if worker['linkedin_company_ids']:
+                form.linkedin_company_ids.data = ','.join(map(str, worker['linkedin_company_ids']))
+            else:
+                form.linkedin_company_ids.data = ''
+            
+            form.hours_old.data = worker['hours_old']
+            form.results_per_run.data = worker['results_per_run']
+            form.current_offset.data = worker['current_offset']
+            form.schedule_hours.data = worker['schedule_hours']
+            form.schedule_minute_offset.data = worker['schedule_minute_offset']
+            # Handle case where use_webshare_proxies column might not exist yet
+            if 'use_webshare_proxies' in worker:
+                form.use_webshare_proxies.data = worker['use_webshare_proxies']
+            else:
+                # Default to True for backward compatibility
+                form.use_webshare_proxies.data = True
+            
+            # Handle proxies array
+            if worker['proxies']:
+                form.proxies.data = '\n'.join(worker['proxies'])
+            else:
+                form.proxies.data = ''
+            
+            form.max_retries.data = worker['max_retries']
+            form.timeout.data = worker['timeout']
+            form.rate_limit_requests.data = worker['rate_limit_requests']
+            form.rate_limit_seconds.data = worker['rate_limit_seconds']
+            form.description_format.data = worker['description_format']
+            form.linkedin_fetch_description.data = worker['linkedin_fetch_description']
+            form.database_id.data = worker['database_id']
+            form.table_name.data = worker['table_name']
+            form.memory_limit_mb.data = worker['memory_limit_mb']
+            form.cpu_limit_cores.data = float(worker['cpu_limit_cores']) if worker['cpu_limit_cores'] else 0.5
+            form.max_runtime_minutes.data = worker['max_runtime_minutes']
+            form.max_consecutive_errors.data = worker['max_consecutive_errors']
+            form.status.data = 'active'  # New workers should start as active
+            form.auto_pause_on_errors.data = worker['auto_pause_on_errors']
+            
+            # Handle tags array
+            if worker['tags']:
+                form.tags.data = ','.join(worker['tags'])
+            else:
+                form.tags.data = ''
+        
+        # Handle form submission
+        if form.validate_on_submit():
+            try:
+                # Parse linkedin_company_ids
+                linkedin_company_ids = []
+                if form.linkedin_company_ids.data:
+                    try:
+                        linkedin_company_ids = [int(x.strip()) for x in form.linkedin_company_ids.data.split(',')]
+                    except ValueError:
+                        flash('Invalid LinkedIn Company IDs format', 'error')
+                        return render_template('worker_form.html', form=form, action='duplicate', worker_id=worker_id)
+                
+                # Parse proxies
+                proxies = []
+                if form.proxies.data:
+                    proxies = [line.strip() for line in form.proxies.data.split('\n') if line.strip()]
+                
+                # Parse tags
+                tags = []
+                if form.tags.data:
+                    tags = [tag.strip() for tag in form.tags.data.split(',')]
+                
+                # Insert new worker
+                try:
+                    execute_query("""
+                        INSERT INTO scraping_workers (
+                            name, description, site, search_term, location, country, distance, job_type,
+                            is_remote, easy_apply, linkedin_company_ids, hours_old, results_per_run, current_offset,
+                            schedule_hours, schedule_minute_offset, timezone, proxy_rotation_policy, use_webshare_proxies, proxies,
+                            max_retries, timeout, rate_limit_requests, rate_limit_seconds, description_format,
+                            linkedin_fetch_description, database_id, table_name, status, memory_limit_mb,
+                            cpu_limit_cores, max_runtime_minutes, max_consecutive_errors, auto_pause_on_errors, tags,
+                            next_run
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        form.name.data,
+                        form.description.data,
+                        form.site.data,
+                        form.search_term.data,
+                        form.location.data,
+                        form.country.data,
+                        form.distance.data,
+                        json.dumps(form.job_type.data) if form.job_type.data else None,
+                        form.is_remote.data,
+                        form.easy_apply.data,
+                        linkedin_company_ids,
+                        form.hours_old.data,
+                        form.results_per_run.data,
+                        form.current_offset.data,
+                        form.schedule_hours.data,
+                        form.schedule_minute_offset.data,
+                        form.timezone.data,
+                        form.proxy_rotation_policy.data,
+                        form.use_webshare_proxies.data,
+                        proxies,
+                        form.max_retries.data,
+                        form.timeout.data,
+                        form.rate_limit_requests.data,
+                        form.rate_limit_seconds.data,
+                        form.description_format.data,
+                        form.linkedin_fetch_description.data,
+                        form.database_id.data,
+                        form.table_name.data,
+                        form.status.data,
+                        form.memory_limit_mb.data,
+                        form.cpu_limit_cores.data,
+                        form.max_runtime_minutes.data,
+                        form.max_consecutive_errors.data,
+                        form.auto_pause_on_errors.data,
+                        tags,
+                        datetime.utcnow() + timedelta(minutes=form.schedule_minute_offset.data or 0)  # Initial next_run
+                    ), fetch=False, commit=True)
+                except Exception as e:
+                    # Handle case where use_webshare_proxies column doesn't exist yet
+                    if "use_webshare_proxies" in str(e):
+                        logger.warning("use_webshare_proxies column not found, inserting without it")
+                        execute_query("""
+                            INSERT INTO scraping_workers (
+                                name, description, site, search_term, location, country, distance, job_type,
+                                is_remote, easy_apply, linkedin_company_ids, hours_old, results_per_run, current_offset,
+                                schedule_hours, schedule_minute_offset, timezone, proxy_rotation_policy, proxies,
+                                max_retries, timeout, rate_limit_requests, rate_limit_seconds, description_format,
+                                linkedin_fetch_description, database_id, table_name, status, memory_limit_mb,
+                                cpu_limit_cores, max_runtime_minutes, max_consecutive_errors, auto_pause_on_errors, tags,
+                                next_run
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """, (
+                            form.name.data,
+                            form.description.data,
+                            form.site.data,
+                            form.search_term.data,
+                            form.location.data,
+                            form.country.data,
+                            form.distance.data,
+                            json.dumps(form.job_type.data) if form.job_type.data else None,
+                            form.is_remote.data,
+                            form.easy_apply.data,
+                            linkedin_company_ids,
+                            form.hours_old.data,
+                            form.results_per_run.data,
+                            form.current_offset.data,
+                            form.schedule_hours.data,
+                            form.schedule_minute_offset.data,
+                            form.timezone.data,
+                            form.proxy_rotation_policy.data,
+                            proxies,
+                            form.max_retries.data,
+                            form.timeout.data,
+                            form.rate_limit_requests.data,
+                            form.rate_limit_seconds.data,
+                            form.description_format.data,
+                            form.linkedin_fetch_description.data,
+                            form.database_id.data,
+                            form.table_name.data,
+                            form.status.data,
+                            form.memory_limit_mb.data,
+                            form.cpu_limit_cores.data,
+                            form.max_runtime_minutes.data,
+                            form.max_consecutive_errors.data,
+                            form.auto_pause_on_errors.data,
+                            tags,
+                            datetime.utcnow() + timedelta(minutes=form.schedule_minute_offset.data or 0)  # Initial next_run
+                        ), fetch=False, commit=True)
+                    else:
+                        raise
+                
+                flash('Worker duplicated successfully!', 'success')
+                return redirect(url_for('list_workers'))
+                
+            except psycopg2.IntegrityError as e:
+                if "scraping_workers_name_key" in str(e):
+                    flash('A worker with this name already exists. Please choose a different name.', 'error')
+                else:
+                    flash(f'Error duplicating worker: {str(e)}', 'error')
+                # Rollback the transaction
+                conn = get_db_connection()
+                conn.rollback()
+                release_db_connection(conn)
+                return render_template('worker_form.html', form=form, action='duplicate', worker_id=worker_id)
+            except Exception as e:
+                app.logger.error(f"Worker duplication error: {e}")
+                flash(f'Error duplicating worker: {str(e)}', 'error')
+                return render_template('worker_form.html', form=form, action='duplicate', worker_id=worker_id)
+        
+        return render_template('worker_form.html', form=form, action='duplicate', worker_id=worker_id)
+    
+    except Exception as e:
+        app.logger.error(f"Worker duplication error: {e}")
+        return render_template('error.html', error=str(e))
+
+
 @app.route('/workers/<int:worker_id>/delete')
 @login_required
 def delete_worker(worker_id):
