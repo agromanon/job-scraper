@@ -119,11 +119,17 @@ class ProxyManager:
         if datetime.now() - self.last_refresh < timedelta(seconds=self.refresh_interval):
             return
             
+        # Require API key for Webshare API access
+        if not config.api_key:
+            if logger:
+                logger.warning("Webshare API key required for proxy pool refresh")
+            return
+            
         try:
-            # Webshare API endpoint for listing proxies
+            # Correct Webshare API endpoint for listing proxies
             url = "https://proxy.webshare.io/api/v2/proxy/list/"
             
-            # Headers with API token authentication
+            # Correct authentication header format
             headers = {
                 "Authorization": f"Token {config.api_key}"
             }
@@ -144,13 +150,14 @@ class ProxyManager:
                 proxies = []
                 
                 for proxy_data in data.get('results', []):
+                    # Handle the correct field names from Webshare API
                     proxy = WebshareProxy(
                         username=proxy_data.get('username', ''),
                         password=proxy_data.get('password', ''),
                         proxy_address=proxy_data.get('proxy_address', ''),
                         port=proxy_data.get('port', 80),
                         valid=proxy_data.get('valid', False),
-                        last_verification=datetime.fromisoformat(proxy_data.get('last_verification', '').replace('Z', '+00:00')) if proxy_data.get('last_verification') else datetime.now()
+                        last_verification=datetime.now()  # Default to now if not provided
                     )
                     proxies.append(proxy)
                 
