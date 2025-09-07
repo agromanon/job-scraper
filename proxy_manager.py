@@ -11,6 +11,7 @@ try:
 except ImportError:
     requests = None
     REQUESTS_AVAILABLE = False
+    print("Warning: requests library not available, proxy manager disabled")
 
 try:
     import logging
@@ -104,18 +105,19 @@ class ProxyManager:
             if logger:
                 logger.info(f"Added Webshare.io proxy config: {username}@{proxy_host}:{proxy_port}")
     
-    def _fetch_webshare_proxies(self):
-        """Fetch proxy list from Webshare API"""
+    def refresh_proxy_pool(self):
+        """Refresh the proxy pool by fetching new proxies from Webshare API"""
         if not REQUESTS_AVAILABLE:
-            return []
+            return
             
         if 'webshare' not in self.proxy_configs:
-            return []
+            return
             
         config = self.proxy_configs['webshare']
         
-        if not config.api_key:
-            return []
+        # Only refresh if enough time has passed
+        if datetime.now() - self.last_refresh < timedelta(seconds=self.refresh_interval):
+            return
             
         try:
             # Webshare API endpoint for listing proxies
@@ -152,44 +154,23 @@ class ProxyManager:
                     )
                     proxies.append(proxy)
                 
-                if logger:
-                    logger.info(f"Successfully fetched {len(proxies)} proxies from Webshare API")
-                
-                return proxies
+                if proxies:
+                    self.proxy_pool = proxies
+                    self.last_refresh = datetime.now()
+                    self.current_proxy_index = 0
+                    
+                    if logger:
+                        logger.info(f"Refreshed proxy pool with {len(proxies)} proxies from Webshare API")
+                else:
+                    if logger:
+                        logger.warning("No proxies returned from Webshare API")
             else:
                 if logger:
                     logger.error(f"Failed to fetch proxies from Webshare API. Status code: {response.status_code}, Response: {response.text}")
-                return []
                 
         except Exception as e:
             if logger:
                 logger.error(f"Error fetching proxies from Webshare API: {e}")
-            return []
-    
-    def refresh_proxy_pool(self):
-        """Refresh the proxy pool by fetching new proxies from Webshare API"""
-        if not REQUESTS_AVAILABLE:
-            return
-            
-        if 'webshare' not in self.proxy_configs:
-            return
-            
-        # Only refresh if enough time has passed
-        if datetime.now() - self.last_refresh < timedelta(seconds=self.refresh_interval):
-            return
-            
-        try:
-            proxies = self._fetch_webshare_proxies()
-            if proxies:
-                self.proxy_pool = proxies
-                self.last_refresh = datetime.now()
-                self.current_proxy_index = 0
-                
-                if logger:
-                    logger.info(f"Refreshed proxy pool with {len(proxies)} proxies")
-        except Exception as e:
-            if logger:
-                logger.error(f"Error refreshing proxy pool: {e}")
     
     def get_next_proxy(self):
         """Get the next proxy from the pool for rotation"""
