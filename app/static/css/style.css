@@ -1420,6 +1420,7 @@ a:hover {
   }
   
   .action-btn-text {
+    display: none;
     font-size: 0.75rem;
   }
   
@@ -1467,6 +1468,7 @@ a:hover {
   
   .action-btn-text {
     display: none !important;
+    font-size: 0.75rem;
   }
   
   .table-responsive {
@@ -2018,5 +2020,29 @@ a:hover {
   
   .main-content {
     margin-top: 56px; /* Account for mobile nav toggle height */
+  }
+}
+
+/* Action button text - hidden by default, shown on hover */
+.action-btn-text {
+  display: none;
+  font-size: 0.75rem;
+}
+
+/* Show action button text on hover for desktop */
+@media (min-width: 768px) {
+  .action-btn:hover .action-btn-text {
+    display: inline-block;
+  }
+  
+  .action-btn:focus .action-btn-text {
+    display: inline-block;
+  }
+}
+
+/* Always hide action button text on mobile */
+@media (max-width: 767.98px) {
+  .action-btn-text {
+    display: none !important;
   }
 }
