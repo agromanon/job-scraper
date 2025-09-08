@@ -16,7 +16,7 @@ import traceback
 import math
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, fields
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Add the current directory to Python path for imports
@@ -61,6 +61,7 @@ class WorkerConfig:
     """Configuration for a scraping worker"""
     id: int
     name: str
+    description: str
     site: str
     search_term: str
     location: str
@@ -72,6 +73,7 @@ class WorkerConfig:
     linkedin_company_ids: List[int]
     hours_old: int
     results_per_run: int
+    current_offset: int
     schedule_hours: int
     schedule_minute_offset: int
     timezone: str
@@ -87,12 +89,33 @@ class WorkerConfig:
     database_id: int
     table_name: str
     status: str
-    memory_limit_mb: int
-    cpu_limit_cores: float
-    max_runtime_minutes: int
-    tags: List[str]
-    # Pagination offset for rotating through search results
-    current_offset: int = 0
+    last_run: Optional[datetime] = None
+    next_run: Optional[datetime] = None
+    last_success: Optional[datetime] = None
+    last_error: Optional[str] = None
+    consecutive_errors: int = 0
+    max_consecutive_errors: int = 5
+    auto_pause_on_errors: bool = True
+    memory_limit_mb: int = 512
+    cpu_limit_cores: float = 0.5
+    max_runtime_minutes: int = 60
+    tags: List[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    
+    def __post_init__(self):
+        # Initialize mutable defaults
+        if self.job_type is None:
+            self.job_type = []
+        if self.linkedin_company_ids is None:
+            self.linkedin_company_ids = []
+        if self.proxies is None:
+            self.proxies = []
+        if self.tags is None:
+            self.tags = []
+        # Initialize description if not provided
+        if not hasattr(self, 'description') or self.description is None:
+            self.description = ""
 
 
 @dataclass
@@ -968,7 +991,11 @@ class WorkerManager:
                 if 'use_webshare_proxies' not in row_dict:
                     row_dict['use_webshare_proxies'] = True  # Default to True for backward compatibility
                 
-                worker_config = WorkerConfig(**row_dict)
+                # Filter row_dict to only include attributes that exist in WorkerConfig
+                worker_config_fields = {f.name for f in dataclasses.fields(WorkerConfig)}
+                filtered_row_dict = {k: v for k, v in row_dict.items() if k in worker_config_fields}
+                
+                worker_config = WorkerConfig(**filtered_row_dict)
                 workers.append(worker_config)
             
             cursor.close()

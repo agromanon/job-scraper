@@ -2055,7 +2055,7 @@ def cleanup_dashboard():
             stats = stats_result[0] if stats_result and len(stats_result) > 0 else {}
         except Exception as e:
             # If indeed_br table doesn't exist, get general database statistics
-            logger.warning(f"Could not query indeed_br table: {e}")
+            app.logger.warning(f"Could not query indeed_br table: {e}")
             stats = {
                 'total_jobs': 0,
                 'inactive_jobs': 0,
@@ -2074,7 +2074,7 @@ def cleanup_dashboard():
                 LIMIT 10
             """, fetch=True)
         except Exception as e:
-            logger.warning(f"Could not get recent cleanup runs: {e}")
+            app.logger.warning(f"Could not get recent cleanup runs: {e}")
             recent_cleanups = []
         
         return render_template('cleanup_dashboard.html', stats=stats, recent_cleanups=recent_cleanups)
