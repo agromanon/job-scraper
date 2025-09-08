@@ -2066,13 +2066,16 @@ def cleanup_dashboard():
         
         # Get recent cleanup runs
         try:
-            recent_cleanups = execute_query("""
-                SELECT *
-                FROM worker_execution_history
-                WHERE worker_name LIKE '%cleanup%' OR worker_name LIKE '%status%'
-                ORDER BY execution_start DESC
+            recent_cleanups_result = execute_query("""
+                SELECT eh.*, w.name as worker_name, d.name as database_name
+                FROM worker_execution_history eh
+                LEFT JOIN scraping_workers w ON eh.worker_id = w.id
+                LEFT JOIN scraping_databases d ON eh.database_id = d.id
+                WHERE w.name LIKE '%cleanup%' OR w.name LIKE '%status%'
+                ORDER BY eh.execution_start DESC
                 LIMIT 10
             """, fetch=True)
+            recent_cleanups = recent_cleanups_result if recent_cleanups_result else []
         except Exception as e:
             app.logger.warning(f"Could not get recent cleanup runs: {e}")
             recent_cleanups = []

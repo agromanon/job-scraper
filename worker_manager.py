@@ -992,7 +992,7 @@ class WorkerManager:
                     row_dict['use_webshare_proxies'] = True  # Default to True for backward compatibility
                 
                 # Filter row_dict to only include attributes that exist in WorkerConfig
-                worker_config_fields = {f.name for f in dataclasses.fields(WorkerConfig)}
+                worker_config_fields = {f.name for f in fields(WorkerConfig)}
                 filtered_row_dict = {k: v for k, v in row_dict.items() if k in worker_config_fields}
                 
                 worker_config = WorkerConfig(**filtered_row_dict)

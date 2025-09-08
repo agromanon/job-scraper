@@ -205,13 +205,13 @@
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
                                                 <a href="{{ url_for('toggle_worker', worker_id=worker.id) }}" class="action-btn action-btn-toggle" title="Toggle Status">
-                                                    <i class="bi bi-play-pause"></i>
+                                                    <i class="bi bi-pause-circle"></i>
                                                 </a>
                                                 <a href="{{ url_for('execute_worker', worker_id=worker.id) }}" class="action-btn action-btn-execute" title="Execute Now">
-                                                    <i class="bi bi-play"></i>
+                                                    <i class="bi bi-play-circle"></i>
                                                 </a>
                                                 <a href="{{ url_for('duplicate_worker', worker_id=worker.id) }}" class="action-btn action-btn-duplicate" title="Duplicate">
-                                                    <i class="bi bi-copy"></i>
+                                                    <i class="bi bi-clipboard-plus"></i>
                                                 </a>
                                                 <a href="{{ url_for('delete_worker', worker_id=worker.id) }}" class="action-btn action-btn-delete" 
                                                    onclick="return confirm('Are you sure you want to delete this worker?');" title="Delete">
