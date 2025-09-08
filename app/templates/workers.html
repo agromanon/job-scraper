@@ -109,31 +109,31 @@
                 {% if workers %}
                     <div class="table-responsive">
                         <table class="table table-hover" id="workersTable">
-                            <thead class="d-none d-md-table-header-group">
+                            <thead>
                                 <tr>
                                     <th>
                                         <a href="{{ url_for('list_workers', search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by='name', sort_order='asc' if sort_by != 'name' or sort_order == 'desc' else 'desc') }}" class="text-decoration-none">
                                             Name {% if sort_by == 'name' %}<i class="bi bi-arrow-{% if sort_order == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}
                                         </a>
                                     </th>
-                                    <th class="d-none d-lg-table-cell">
+                                    <th>
                                         <a href="{{ url_for('list_workers', search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by='site', sort_order='asc' if sort_by != 'site' or sort_order == 'desc' else 'desc') }}" class="text-decoration-none">
                                             Site {% if sort_by == 'site' %}<i class="bi bi-arrow-{% if sort_order == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}
                                         </a>
                                     </th>
-                                    <th class="d-none d-xl-table-cell">Description</th>
-                                    <th class="d-none d-lg-table-cell">Location</th>
+                                    <th>Description</th>
+                                    <th>Location</th>
                                     <th>
                                         <a href="{{ url_for('list_workers', search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by='status', sort_order='asc' if sort_by != 'status' or sort_order == 'desc' else 'desc') }}" class="text-decoration-none">
                                             Status {% if sort_by == 'status' %}<i class="bi bi-arrow-{% if sort_order == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}
                                         </a>
                                     </th>
-                                    <th class="d-none d-xl-table-cell">
+                                    <th>
                                         <a href="{{ url_for('list_workers', search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by='last_run', sort_order='asc' if sort_by != 'last_run' or sort_order == 'desc' else 'desc') }}" class="text-decoration-none">
                                             Last Run {% if sort_by == 'last_run' %}<i class="bi bi-arrow-{% if sort_order == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}
                                         </a>
                                     </th>
-                                    <th class="d-none d-xl-table-cell">
+                                    <th>
                                         <a href="{{ url_for('list_workers', search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by='next_run', sort_order='asc' if sort_by != 'next_run' or sort_order == 'desc' else 'desc') }}" class="text-decoration-none">
                                             Next Run {% if sort_by == 'next_run' %}<i class="bi bi-arrow-{% if sort_order == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}
                                         </a>
@@ -156,26 +156,20 @@
                                                     {% if worker.search_term %}
                                                         <small class="text-muted d-block">{{ worker.search_term }}</small>
                                                     {% endif %}
-                                                    <div class="d-md-none">
-                                                        <small class="badge bg-light text-dark text-capitalize">{{ worker.site }}</small>
-                                                        <small class="badge bg-{{ 'success' if worker.status == 'active' else 'warning' if worker.status == 'paused' else 'danger' }}">
-                                                            {{ worker.status|title }}
-                                                        </small>
-                                                    </div>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="d-none d-lg-table-cell">
+                                        <td>
                                             <span class="badge bg-light text-dark text-capitalize">{{ worker.site }}</span>
                                         </td>
-                                        <td class="d-none d-xl-table-cell">
+                                        <td>
                                             {% if worker.description %}
                                                 <small class="text-muted">{{ worker.description[:100] }}{% if worker.description|length > 100 %}...{% endif %}</small>
                                             {% else %}
                                                 <small class="text-muted">No description</small>
                                             {% endif %}
                                         </td>
-                                        <td class="d-none d-lg-table-cell">
+                                        <td>
                                             {% if worker.location %}
                                                 <small>{{ worker.location }}</small>
                                             {% else %}
@@ -187,7 +181,7 @@
                                                 {{ worker.status|title }}
                                             </span>
                                         </td>
-                                        <td class="d-none d-xl-table-cell">
+                                        <td>
                                             <small class="text-muted">
                                                 {% if worker.last_run %}
                                                     {{ worker.last_run.strftime('%Y-%m-%d %H:%M') }}
@@ -196,7 +190,7 @@
                                                 {% endif %}
                                             </small>
                                         </td>
-                                        <td class="d-none d-xl-table-cell">
+                                        <td>
                                             <small class="text-muted">
                                                 {% if worker.next_run %}
                                                     {{ worker.next_run.strftime('%Y-%m-%d %H:%M') }}

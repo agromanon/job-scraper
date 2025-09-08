@@ -309,16 +309,34 @@ def login():
     form = LoginForm()
     
     if form.validate_on_submit():
-        # Simple password authentication (in production, use proper hashing)
-        admin_password = os.getenv('ADMIN_PASSWORD', 'admin123')
+        # Simple password authentication with bcrypt hashing (secure for production)
+        admin_password_hash = os.getenv('ADMIN_PASSWORD_HASH')
+        admin_password = os.getenv('ADMIN_PASSWORD')
         
-        if form.password.data == admin_password:
-            session['logged_in'] = True
-            session['username'] = 'admin'
-            flash('Login successful!', 'success')
-            return redirect(url_for('dashboard'))
+        # If hash is provided, use it (more secure)
+        if admin_password_hash:
+            if bcrypt.checkpw(form.password.data.encode('utf-8'), admin_password_hash.encode('utf-8')):
+                session['logged_in'] = True
+                session['username'] = 'admin'
+                flash('Login successful!', 'success')
+                return redirect(url_for('dashboard'))
+        # If plain text password is provided, use it (less secure but convenient for development)
+        elif admin_password:
+            if form.password.data == admin_password:
+                session['logged_in'] = True
+                session['username'] = 'admin'
+                flash('Login successful!', 'success')
+                return redirect(url_for('dashboard'))
+        # Fallback to default password (least secure, only for development)
         else:
-            flash('Invalid password', 'error')
+            default_password = 'admin123'
+            if form.password.data == default_password:
+                session['logged_in'] = True
+                session['username'] = 'admin'
+                flash('Login successful! (Using default password - please set ADMIN_PASSWORD or ADMIN_PASSWORD_HASH environment variable)', 'warning')
+                return redirect(url_for('dashboard'))
+        
+        flash('Invalid password', 'error')
     
     return render_template('login.html', form=form)
 
@@ -2051,8 +2069,11 @@ def cleanup_dashboard():
                 FROM indeed_br
             """, fetch=True)
             
-            # Handle case where query returns no rows
-            stats = stats_result[0] if stats_result and len(stats_result) > 0 else {}
+            # Handle case where query returns no rows or None
+            if stats_result and isinstance(stats_result, (list, tuple)) and len(stats_result) > 0:
+                stats = dict(stats_result[0]) if stats_result[0] else {}
+            else:
+                stats = {}
         except Exception as e:
             # If indeed_br table doesn't exist, get general database statistics
             app.logger.warning(f"Could not query indeed_br table: {e}")
@@ -2075,7 +2096,12 @@ def cleanup_dashboard():
                 ORDER BY eh.execution_start DESC
                 LIMIT 10
             """, fetch=True)
-            recent_cleanups = recent_cleanups_result if recent_cleanups_result else []
+            
+            # Handle case where query returns no rows or None
+            if recent_cleanups_result and isinstance(recent_cleanups_result, (list, tuple)):
+                recent_cleanups = [dict(row) for row in recent_cleanups_result]
+            else:
+                recent_cleanups = []
         except Exception as e:
             app.logger.warning(f"Could not get recent cleanup runs: {e}")
             recent_cleanups = []

@@ -912,6 +912,52 @@ a:hover {
   background-color: var(--secondary-800);
 }
 
+/* Additional table styling for dark theme */
+[data-theme="dark"] .table {
+  --bs-table-color: var(--secondary-200);
+  --bs-table-bg: var(--surface);
+  --bs-table-border-color: var(--secondary-700);
+  --bs-table-striped-bg: var(--secondary-800);
+  --bs-table-striped-color: var(--secondary-200);
+  --bs-table-active-bg: var(--secondary-700);
+  --bs-table-active-color: var(--secondary-100);
+  --bs-table-hover-bg: var(--secondary-800);
+  --bs-table-hover-color: var(--secondary-100);
+  color: var(--bs-table-color);
+  border-color: var(--bs-table-border-color);
+}
+
+[data-theme="dark"] .table > :not(caption) > * > * {
+  background-color: var(--bs-table-bg);
+  border-bottom-width: var(--border-width);
+  box-shadow: inset 0 0 0 9999px var(--bs-table-bg);
+}
+
+[data-theme="dark"] .table > tbody {
+  --bs-table-color-state: var(--bs-table-hover-color);
+  --bs-table-bg-state: var(--bs-table-hover-bg);
+}
+
+[data-theme="dark"] .table > tbody > tr:hover > * {
+  --bs-table-color-state: var(--bs-table-hover-color);
+  --bs-table-bg-state: var(--bs-table-hover-bg);
+  color: var(--bs-table-color-state);
+  background-color: var(--bs-table-bg-state);
+}
+
+/* Table responsive container */
+.table-responsive {
+  background-color: var(--surface);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  box-shadow: var(--box-shadow);
+}
+
+[data-theme="dark"] .table-responsive {
+  background-color: var(--surface);
+  box-shadow: var(--box-shadow);
+}
+
 /* Table container */
 .table-responsive {
   background-color: var(--surface);
@@ -1857,5 +1903,23 @@ a:hover {
   .xs-filter-col {
     flex: 0 0 auto !important;
     width: 100% !important;
+  }
+  
+  /* Worker Rows */
+  .worker-row {
+    transition: background-color var(--transition-fast);
+  }
+
+  [data-theme="dark"] .worker-row {
+    background-color: var(--surface);
+    color: var(--secondary-200);
+  }
+
+  .worker-row:hover {
+    background-color: var(--secondary-50);
+  }
+
+  [data-theme="dark"] .worker-row:hover {
+    background-color: var(--secondary-800);
   }
 }
