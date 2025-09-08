@@ -562,6 +562,27 @@ a:hover {
   color: var(--danger-300);
 }
 
+/* Action button for duplicate */
+.action-btn-duplicate {
+  color: var(--primary-600);
+}
+
+.action-btn-duplicate:hover:not(:disabled) {
+  background-color: var(--primary-50);
+  border-color: var(--primary-300);
+  color: var(--primary-700);
+}
+
+[data-theme="dark"] .action-btn-duplicate {
+  color: var(--primary-400);
+}
+
+[data-theme="dark"] .action-btn-duplicate:hover:not(:disabled) {
+  background-color: var(--primary-900);
+  border-color: var(--primary-700);
+  color: var(--primary-300);
+}
+
 /* Action button group */
 .action-btn-group {
   display: flex;
