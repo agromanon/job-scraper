@@ -1350,17 +1350,49 @@ def execute_worker(worker_id):
 def list_databases():
     """List all databases"""
     try:
-        databases = execute_query("""
+        # Get filter parameters
+        search_term = request.args.get('search', '').strip()
+        status_filter = request.args.get('status', '').strip()
+        host_filter = request.args.get('host', '').strip()
+        
+        # Build WHERE clause
+        where_conditions = []
+        params = []
+        
+        if search_term:
+            where_conditions.append("(d.name ILIKE %s OR d.description ILIKE %s)")
+            search_param = f"%{search_term}%"
+            params.extend([search_param, search_param])
+        
+        if status_filter:
+            is_active = status_filter == 'active'
+            where_conditions.append("d.is_active = %s")
+            params.append(is_active)
+        
+        if host_filter:
+            where_conditions.append("d.host ILIKE %s")
+            params.append(f"%{host_filter}%")
+        
+        where_clause = ""
+        if where_conditions:
+            where_clause = "WHERE " + " AND ".join(where_conditions)
+        
+        databases = execute_query(f"""
             SELECT 
                 d.*,
                 COUNT(DISTINCT w.id) as worker_count
             FROM scraping_databases d
             LEFT JOIN scraping_workers w ON d.id = w.database_id AND w.status = 'active'
+            {where_clause}
             GROUP BY d.id
             ORDER BY d.name
-        """, fetch=True)
+        """, tuple(params), fetch=True)
         
-        return render_template('databases.html', databases=databases)
+        return render_template('databases.html', 
+                             databases=databases,
+                             search_term=search_term,
+                             status_filter=status_filter,
+                             host_filter=host_filter)
     
     except Exception as e:
         app.logger.error(f"Databases list error: {e}")

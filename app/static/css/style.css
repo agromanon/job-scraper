@@ -963,10 +963,51 @@ a:hover {
   background-color: var(--surface);
   border-radius: var(--border-radius);
   overflow: hidden;
+  box-shadow: var(--box-shadow);
+  margin-bottom: var(--spacer-4);
 }
 
-[data-theme="dark"] body .table-responsive {
+[data-theme="dark"] .table-responsive {
   background-color: var(--surface);
+  box-shadow: var(--box-shadow);
+}
+
+/* Ensure table cells have proper padding on mobile */
+@media (max-width: 768px) {
+  .table-responsive .table th,
+  .table-responsive .table td {
+    padding: var(--spacer-2) var(--spacer-3);
+  }
+  
+  /* Ensure action buttons are visible on mobile */
+  .table-responsive .table .action-btn-group {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--spacer-1);
+    justify-content: flex-end;
+  }
+  
+  .table-responsive .table .action-btn {
+    min-width: 30px;
+    min-height: 30px;
+    width: auto;
+    padding: var(--spacer-1);
+  }
+  
+  .table-responsive .table .action-btn-text {
+    display: none !important;
+  }
+  
+  /* Ensure table headers are readable on mobile */
+  .table-responsive .table th {
+    font-size: var(--font-size-sm);
+    white-space: nowrap;
+  }
+  
+  /* Ensure table data is readable on mobile */
+  .table-responsive .table td {
+    font-size: var(--font-size-sm);
+  }
 }
 
 /* Navigation */
@@ -1013,6 +1054,14 @@ a:hover {
   top: 0;
   width: 250px;
   z-index: 1000;
+}
+
+/* Adjust sidebar for mobile navigation toggle */
+@media (max-width: 991.98px) {
+  .sidebar {
+    top: 56px; /* Account for mobile nav toggle height */
+    height: calc(100% - 56px);
+  }
 }
 
 [data-theme="dark"] .sidebar {
@@ -1136,8 +1185,16 @@ a:hover {
   padding: var(--spacer-3) var(--spacer-4);
 }
 
-[data-theme="dark"] body .metric-card-footer {
+[data-theme="dark"] .metric-card-footer {
   background-color: var(--secondary-800);
+}
+
+.metric-card-footer small.text-muted {
+  color: var(--secondary-500);
+}
+
+[data-theme="dark"] .metric-card-footer small.text-muted {
+  color: var(--secondary-400);
 }
 
 .trend-up {
@@ -1921,5 +1978,45 @@ a:hover {
 
   [data-theme="dark"] .worker-row:hover {
     background-color: var(--secondary-800);
+  }
+}
+
+/* Mobile Navigation Toggle */
+.mobile-nav-toggle {
+  background-color: var(--primary-600);
+  border-bottom: var(--border-width) solid var(--secondary-200);
+  box-shadow: var(--box-shadow);
+  display: none;
+  height: 56px;
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 1001;
+}
+
+[data-theme="dark"] .mobile-nav-toggle {
+  background-color: var(--primary-700);
+  border-bottom: var(--border-width) solid var(--secondary-700);
+}
+
+.mobile-nav-toggle .btn-light {
+  background-color: var(--secondary-100);
+  border-color: var(--secondary-300);
+  color: var(--secondary-700);
+}
+
+[data-theme="dark"] .mobile-nav-toggle .btn-light {
+  background-color: var(--secondary-800);
+  border-color: var(--secondary-600);
+  color: var(--secondary-200);
+}
+
+@media (max-width: 991.98px) {
+  .mobile-nav-toggle {
+    display: block;
+  }
+  
+  .main-content {
+    margin-top: 56px; /* Account for mobile nav toggle height */
   }
 }

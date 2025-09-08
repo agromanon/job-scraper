@@ -111,34 +111,34 @@
                         <table class="table table-hover" id="workersTable">
                             <thead>
                                 <tr>
-                                    <th>
+                                    <th class="d-table-cell">
                                         <a href="{{ url_for('list_workers', search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by='name', sort_order='asc' if sort_by != 'name' or sort_order == 'desc' else 'desc') }}" class="text-decoration-none">
                                             Name {% if sort_by == 'name' %}<i class="bi bi-arrow-{% if sort_order == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}
                                         </a>
                                     </th>
-                                    <th>
+                                    <th class="d-table-cell">
                                         <a href="{{ url_for('list_workers', search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by='site', sort_order='asc' if sort_by != 'site' or sort_order == 'desc' else 'desc') }}" class="text-decoration-none">
                                             Site {% if sort_by == 'site' %}<i class="bi bi-arrow-{% if sort_order == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}
                                         </a>
                                     </th>
-                                    <th>Description</th>
-                                    <th>Location</th>
-                                    <th>
+                                    <th class="d-none d-lg-table-cell">Description</th>
+                                    <th class="d-none d-xl-table-cell">Location</th>
+                                    <th class="d-table-cell">
                                         <a href="{{ url_for('list_workers', search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by='status', sort_order='asc' if sort_by != 'status' or sort_order == 'desc' else 'desc') }}" class="text-decoration-none">
                                             Status {% if sort_by == 'status' %}<i class="bi bi-arrow-{% if sort_order == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}
                                         </a>
                                     </th>
-                                    <th>
+                                    <th class="d-none d-lg-table-cell">
                                         <a href="{{ url_for('list_workers', search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by='last_run', sort_order='asc' if sort_by != 'last_run' or sort_order == 'desc' else 'desc') }}" class="text-decoration-none">
                                             Last Run {% if sort_by == 'last_run' %}<i class="bi bi-arrow-{% if sort_order == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}
                                         </a>
                                     </th>
-                                    <th>
+                                    <th class="d-none d-xl-table-cell">
                                         <a href="{{ url_for('list_workers', search=search_term, status=status_filter, site=site_filter, location=location_filter, sort_by='next_run', sort_order='asc' if sort_by != 'next_run' or sort_order == 'desc' else 'desc') }}" class="text-decoration-none">
                                             Next Run {% if sort_by == 'next_run' %}<i class="bi bi-arrow-{% if sort_order == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}
                                         </a>
                                     </th>
-                                    <th>Actions</th>
+                                    <th class="d-table-cell">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -148,7 +148,7 @@
                                         data-site="{{ worker.site }}" 
                                         data-status="{{ worker.status }}"
                                         data-location="{{ worker.location|default('', true)|lower }}">
-                                        <td>
+                                        <td class="d-table-cell">
                                             <div class="d-flex align-items-center">
                                                 <i class="bi bi-robot text-primary me-2"></i>
                                                 <div>
@@ -159,29 +159,29 @@
                                                 </div>
                                             </div>
                                         </td>
-                                        <td>
+                                        <td class="d-table-cell">
                                             <span class="badge bg-light text-dark text-capitalize">{{ worker.site }}</span>
                                         </td>
-                                        <td>
+                                        <td class="d-none d-lg-table-cell">
                                             {% if worker.description %}
                                                 <small class="text-muted">{{ worker.description[:100] }}{% if worker.description|length > 100 %}...{% endif %}</small>
                                             {% else %}
                                                 <small class="text-muted">No description</small>
                                             {% endif %}
                                         </td>
-                                        <td>
+                                        <td class="d-none d-xl-table-cell">
                                             {% if worker.location %}
                                                 <small>{{ worker.location }}</small>
                                             {% else %}
                                                 <small class="text-muted">Not specified</small>
                                             {% endif %}
                                         </td>
-                                        <td>
+                                        <td class="d-table-cell">
                                             <span class="badge bg-{{ 'success' if worker.status == 'active' else 'warning' if worker.status == 'paused' else 'danger' }}">
                                                 {{ worker.status|title }}
                                             </span>
                                         </td>
-                                        <td>
+                                        <td class="d-none d-lg-table-cell">
                                             <small class="text-muted">
                                                 {% if worker.last_run %}
                                                     {{ worker.last_run.strftime('%Y-%m-%d %H:%M') }}
@@ -190,7 +190,7 @@
                                                 {% endif %}
                                             </small>
                                         </td>
-                                        <td>
+                                        <td class="d-none d-xl-table-cell">
                                             <small class="text-muted">
                                                 {% if worker.next_run %}
                                                     {{ worker.next_run.strftime('%Y-%m-%d %H:%M') }}
@@ -199,7 +199,7 @@
                                                 {% endif %}
                                             </small>
                                         </td>
-                                        <td>
+                                        <td class="d-table-cell">
                                             <div class="action-btn-group" role="group">
                                                 <a href="{{ url_for('edit_worker', worker_id=worker.id) }}" class="action-btn action-btn-edit" title="Edit">
                                                     <i class="bi bi-pencil"></i>

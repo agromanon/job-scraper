@@ -20,6 +20,19 @@
     {% block head %}{% endblock %}
 </head>
 <body>
+    <!-- Mobile Navigation Toggle -->
+    <div class="mobile-nav-toggle d-lg-none fixed-top bg-primary text-white p-3" style="z-index: 1001;">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-briefcase-fill me-2"></i>
+                <span class="fs-5 fw-bold">JobSpy</span>
+            </div>
+            <button class="btn btn-sm btn-light" type="button" id="mobileNavToggle">
+                <i class="bi bi-list"></i>
+            </button>
+        </div>
+    </div>
+
     <!-- Sidebar Navigation -->
     <div class="sidebar">
         <div class="d-flex flex-column h-100">
@@ -131,6 +144,26 @@
                     localStorage.setItem('theme', 'light');
                 }
             });
+            
+            // Mobile navigation toggle functionality
+            const mobileNavToggle = document.getElementById('mobileNavToggle');
+            const sidebar = document.querySelector('.sidebar');
+            
+            if (mobileNavToggle && sidebar) {
+                mobileNavToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('show');
+                });
+                
+                // Close sidebar when clicking outside on mobile
+                document.addEventListener('click', function(event) {
+                    const isClickInsideSidebar = sidebar.contains(event.target);
+                    const isClickOnToggle = mobileNavToggle.contains(event.target);
+                    
+                    if (!isClickInsideSidebar && !isClickOnToggle && sidebar.classList.contains('show')) {
+                        sidebar.classList.remove('show');
+                    }
+                });
+            }
         });
     </script>
     
